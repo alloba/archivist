@@ -14,6 +14,7 @@ interface MediaSourceInterface {
 interface MediaSearchResult {
     path: string // this can mean slightly different things depending on the source, but generally the location that holds the actual data for the media. URL or network path or similar.
     meta: object // not sure if I can get more specific than this. Additional information that comes from search results.
+    getHashFunction: MediaSearchResultHashFunction // md5 hash for object. This is technically metadata, but it's mandatory information. So im calling it out separately.
 }
 
 interface MediaSourceVerifyParamsFunc {
@@ -26,4 +27,8 @@ interface MediaSourceSearchFunc {
 
 interface MediaSourceDownloadFunc {
     (searchResult: MediaSearchResult, destination: string): void
+}
+
+interface MediaSearchResultHashFunction{
+    (): string
 }
