@@ -56,11 +56,11 @@ their contents.
 
 **Source Configuration** 
 
-| Param               | Description                                                                                                                                                                                      | Example Values          |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| source.board        | Which board to use as a source for the media scan                                                                                                                                                | `wsg`, `gif`            |
-| source.searchTerm   | A search string to use when looking for threads to pull media from. This would be a substring of the thread title, case-insensitive.                                                             | `ygyl`, `ylyl`, `comfy` |
-| source.requestDelay | The amount of time in milliseconds between interactions with the 4Chan api. The site requests at least a 1 second pause between operations. This parameter is not allowed to be lower than that. | `1000`, `5000`          |
+| Param                      | Description                                                                                                                                                                                      | Example Values          |
+|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| source.path                | A creative usage of the generic param described above. Which board to use as a source for the media scan.                                                                                        | `wsg`, `gif`            |
+| source.params.searchTerm   | A search string to use when looking for threads to pull media from. This would be a substring of the thread title, case-insensitive.                                                             | `ygyl`, `ylyl`, `comfy` |
+| source.params.requestDelay | The amount of time in milliseconds between interactions with the 4Chan api. The site requests at least a 1 second pause between operations. This parameter is not allowed to be lower than that. | `1000`, `5000`          |
 
 #### Directory
 
