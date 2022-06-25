@@ -5,4 +5,6 @@ export class ArchivistParameters {
 
     destinationType: string = '';
     destinationPath: string = '';
+
+    supportedTypes = ['webm', 'mp4']
 }
