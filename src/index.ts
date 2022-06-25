@@ -10,12 +10,25 @@ import minimist from "minimist"
 import fs from 'fs'
 import path from 'path'
 import {ArchivistParameters} from "./ArchivistParameters";
+import {FileSystemSource} from "./mediasource/FileSystemSource";
 
 const LOG = console.log
 
 LOG('-Beginning Archivist Operations-')
+
 const args = minimist(process.argv.slice(2)); //slice off executable path and file path
-const parameters = initializeArchivistParameters(args)
+const parameters: ArchivistParameters = initializeArchivistParameters(args)
+
+const sourceMap = {
+    'fs': FileSystemSource,
+    'other': ArchivistParameters
+}
+
+const mediaSource = new sourceMap.fs(parameters);
+const res = mediaSource.searchFunction(mediaSource.path, 'narcola_tBd6uKeBzvpKT0ioUD1VIA', mediaSource.supportedFileTypes)
+LOG(res)
+LOG(res[0].getHashFunction())
+
 LOG('-Concluded Archivist Operations-')
 
 function initializeArchivistParameters(args: minimist.ParsedArgs) : ArchivistParameters {
