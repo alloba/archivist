@@ -5,6 +5,7 @@ interface MediaSourceInterface {
 
     path: string // subpath that is meant to be used for scans on this source. the meaning of subpath can get a bit creative depending on the source.
     params: object // additional params that are needed by the source. This can vary depending on the type, so it's left vague here.
+    supportedFileTypes: Array<string> // file extensions that are valid targets
 
     verifyParamsFunction: MediaSourceVerifyParamsFunc // verify properties of this object. This is meant to throw an exception if something is wrong.
     searchFunction: MediaSourceSearchFunc // function that will be used to perform searches with this source
@@ -13,6 +14,7 @@ interface MediaSourceInterface {
 
 interface MediaSearchResult {
     path: string // this can mean slightly different things depending on the source, but generally the location that holds the actual data for the media. URL or network path or similar.
+    hash: string | null
     meta: object // not sure if I can get more specific than this. Additional information that comes from search results.
     getHashFunction: MediaSearchResultHashFunction // md5 hash for object. This is technically metadata, but it's mandatory information. So im calling it out separately.
 }
@@ -22,7 +24,7 @@ interface MediaSourceVerifyParamsFunc {
 }
 
 interface MediaSourceSearchFunc {
-    (path: string, searchTerm: null | string): Array<MediaSearchResult>
+    (pathString: string, searchTerm: null | string, fileTypes: Array<string>): Array<MediaSearchResult>
 }
 
 interface MediaSourceDownloadFunc {
