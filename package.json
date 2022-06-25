@@ -1,0 +1,28 @@
+{
+  "name": "archivist",
+  "version": "1.0.0",
+  "description": "Scan sources for media and save results.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc",
+    "prestart": "npx tsc",
+    "start": "node ./build/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/alloba/archivisit.git"
+  },
+  "author": "Alloba",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://gitlab.com/alloba/archivisit/issues"
+  },
+  "homepage": "https://gitlab.com/alloba/archivisit#readme",
+  "devDependencies": {
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "minimist": "^1.2.6"
+  }
+}
