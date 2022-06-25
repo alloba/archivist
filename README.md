@@ -27,7 +27,8 @@ criteria used when searching for media.
 `npm run start -- --config config.json`
 
 **Run with config file and overriding parameters**  
-`npm run start -- --config config.json --destination.type s3 --source.params.requestDelay 1500`
+*Note that special attention must be paid for nested objects in order to parse correctly (sourceParams)*  
+`npm run start -- --config someconfig.json --sourceType overrideSourceType --sourceParams '{\"asdf\":\"bbbb\"}'`
 
 ## Configuration
 
@@ -37,14 +38,14 @@ The naming should be identical between the two options, with runtime parameters 
 any conflicting value that also exists in a provided config file. 
 
 ### Generic Configuration
-| Param            | Description                                                                                                                                                               | Supported Values      | 
-|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
-| source.type      | Type of source that is being pulled from. This will determine the specific module that is used to interface with the source                                               | `4chan`, `directory`  |
-| source.path      | The path inside of the source used to search for files. This has different meaning depending on the source. Refer to individual source documentation for more information | `wsg`, `subdirectory` |
-| source.params    | Source-specific override values. These are source specific. Refer to individual source docs for more information                                                          | `timeout`, `delay`    |
-|                  |                                                                                                                                                                           |                       |
-| destination.type | The desired destination type. The place that downloaded files will be placed.                                                                                             | `s3`, `directory`     |
-| destination.path | The path inside of the destination that will be used for storage. This can have different meaning depending on the destination. Refer to specific destination docs.       | `/folder/path`        |
+| Param           | Description                                                                                                                                                               | Supported Values      | 
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
+| sourceType      | Type of source that is being pulled from. This will determine the specific module that is used to interface with the source                                               | `4chan`, `directory`  |
+| sourcePath      | The path inside of the source used to search for files. This has different meaning depending on the source. Refer to individual source documentation for more information | `wsg`, `subdirectory` |
+| sourceParams    | Source-specific override values. These are source specific. Refer to individual source docs for more information                                                          | `timeout`, `delay`    |
+|                 |                                                                                                                                                                           |                       |
+| destinationType | The desired destination type. The place that downloaded files will be placed.                                                                                             | `s3`, `directory`     |
+| destinationPath | The path inside of the destination that will be used for storage. This can have different meaning depending on the destination. Refer to specific destination docs.       | `/folder/path`        |
 
 ### Sources
 
@@ -56,11 +57,11 @@ their contents.
 
 **Source Configuration** 
 
-| Param                      | Description                                                                                                                                                                                      | Example Values          |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| source.path                | A creative usage of the generic param described above. Which board to use as a source for the media scan.                                                                                        | `wsg`, `gif`            |
-| source.params.searchTerm   | A search string to use when looking for threads to pull media from. This would be a substring of the thread title, case-insensitive.                                                             | `ygyl`, `ylyl`, `comfy` |
-| source.params.requestDelay | The amount of time in milliseconds between interactions with the 4Chan api. The site requests at least a 1 second pause between operations. This parameter is not allowed to be lower than that. | `1000`, `5000`          |
+| Param                     | Description                                                                                                                                                                                      | Example Values          |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| sourcePath                | A creative usage of the generic param described above. Which board to use as a source for the media scan.                                                                                        | `wsg`, `gif`            |
+| sourceParams.searchTerm   | A search string to use when looking for threads to pull media from. This would be a substring of the thread title, case-insensitive.                                                             | `ygyl`, `ylyl`, `comfy` |
+| sourceParams.requestDelay | The amount of time in milliseconds between interactions with the 4Chan api. The site requests at least a 1 second pause between operations. This parameter is not allowed to be lower than that. | `1000`, `5000`          |
 
 #### Directory
 
