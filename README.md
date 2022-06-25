@@ -24,10 +24,10 @@ criteria used when searching for media.
 ### Examples 
 
 **Run with config file**   
-`npm run start --config config.json`
+`npm run start -- --config config.json`
 
 **Run with config file and overriding parameters**  
-`npm run start --config config.json --destination.type s3 --source.params.requestDelay 1500`
+`npm run start -- --config config.json --destination.type s3 --source.params.requestDelay 1500`
 
 ## Configuration
 
