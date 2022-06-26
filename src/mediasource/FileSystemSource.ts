@@ -3,8 +3,6 @@ import fs from 'fs'
 import crypto from 'crypto'
 import FileMeta from "../model/FileMeta.js";
 
-const LOG = console.log
-
 export default class FileSystemSource {
     id: string
     basepath: string

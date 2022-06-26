@@ -12,6 +12,7 @@ import path from 'path'
 
 import ArchivistParameters from "./model/ArchivistParameters.js";
 import FileSystemSource from "./mediasource/FileSystemSource.js";
+import S3Source from "./mediasource/S3Source.js";
 import FileSystemDestination from "./destination/FileSystemDestination.js";
 
 const LOG = console.log
@@ -23,21 +24,24 @@ const parameters: ArchivistParameters = initializeArchivistParameters(args)
 
 const sourceMap = {
     'fs': FileSystemSource,
-    'other': ArchivistParameters
+    's3': S3Source
 }
 
 const destinationMap = {
     'fs': FileSystemDestination
 }
 
-const mediaSource = new sourceMap.fs(parameters.sourcePath);
+// const mediaSource = new sourceMap.fs(parameters.sourcePath);
 const mediaDestination = new destinationMap.fs(parameters.destinationPath)
+// const metaScanResults = await mediaSource.scanForMetadata().then(x => x.filter(z => parameters.supportedTypes.includes(z.extension)))
+// await Promise.all(metaScanResults.map(x => mediaDestination.saveMedia(x, mediaSource.downloadFile(x))))
 
-const metaScanResults = await mediaSource.scanForMetadata().then(x => x.filter(z => parameters.supportedTypes.includes(z.extension)))
+const mediaSource = new sourceMap.s3('testSourceFiles/', 'us-east-1', 'kaleidoscope-media');
+const metaScanResults = await mediaSource.scanForMetadata()
+const tstDl = mediaSource.downloadFile(metaScanResults[0])
+await mediaDestination.saveMedia(metaScanResults[0], tstDl)
 LOG(metaScanResults)
-LOG('+')
-LOG(await mediaDestination.doesFileAlreadyExist(metaScanResults[0]))
-await Promise.all(metaScanResults.map(x => mediaDestination.saveMedia(x, mediaSource.downloadFile(x))))
+
 
 LOG('-Concluded Archivist Operations-')
 

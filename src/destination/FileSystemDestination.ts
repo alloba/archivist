@@ -14,9 +14,14 @@ export default class FileSystemDestination {
 
 
     public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>): Promise<void> {
+        // if(await this.doesFileAlreadyExist(filemeta)){
+        //     return Promise.resolve()
+        // }
+
         const newpath = path.resolve(this.basepath, this.getUniqueName(filemeta.name))
         return rawfilepromise
             .then(raw => fs.promises.writeFile(newpath, raw))
+            // .then(_ => this.existingHashes?.push(filemeta.md5))
             .then(() => Promise.resolve())
     }
 
