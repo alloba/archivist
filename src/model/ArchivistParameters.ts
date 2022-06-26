@@ -1,4 +1,4 @@
-export class ArchivistParameters {
+export default class ArchivistParameters {
     sourceType: string = '';
     sourcePath: string = '';
     sourceParams: object = {};
@@ -6,5 +6,5 @@ export class ArchivistParameters {
     destinationType: string = '';
     destinationPath: string = '';
 
-    supportedTypes = ['webm', 'mp4']
+    supportedTypes = ['.webm', '.mp4']
 }

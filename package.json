@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Scan sources for media and save results.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",

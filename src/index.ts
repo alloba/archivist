@@ -9,8 +9,10 @@
 import minimist from "minimist"
 import fs from 'fs'
 import path from 'path'
-import {ArchivistParameters} from "./ArchivistParameters";
-import {FileSystemSource} from "./mediasource/FileSystemSource";
+
+import ArchivistParameters from "./model/ArchivistParameters.js";
+import {FileSystemSource} from "./mediasource/FileSystemSource.js";
+import {FileSystemDestination} from "./destination/FileSystemDestination.js";
 
 const LOG = console.log
 
@@ -24,10 +26,18 @@ const sourceMap = {
     'other': ArchivistParameters
 }
 
-const mediaSource = new sourceMap.fs(parameters);
-const res = mediaSource.searchFunction(mediaSource.path, 'narcola_tBd6uKeBzvpKT0ioUD1VIA', mediaSource.supportedFileTypes)
-LOG(res)
-LOG(res[0].getHashFunction())
+const destinationMap = {
+    'fs': FileSystemDestination
+}
+
+const mediaSource = new sourceMap.fs(parameters.sourcePath);
+const mediaDestination = new destinationMap.fs(parameters.destinationPath)
+
+const metaScanResults = await mediaSource.scanForMetadata().then(x => x.filter(z => parameters.supportedTypes.includes(z.extension)))
+LOG(metaScanResults)
+LOG('+')
+LOG(await mediaDestination.doesFileAlreadyExist(metaScanResults[0]))
+await Promise.all(metaScanResults.map(x => mediaDestination.saveMedia(x, mediaSource.downloadFile(x))))
 
 LOG('-Concluded Archivist Operations-')
 
