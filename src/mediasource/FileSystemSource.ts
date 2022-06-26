@@ -5,7 +5,7 @@ import FileMeta from "../model/FileMeta.js";
 
 const LOG = console.log
 
-export class FileSystemSource {
+export default class FileSystemSource {
     id: string
     basepath: string
 

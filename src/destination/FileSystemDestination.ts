@@ -3,7 +3,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 import FileMeta from "../model/FileMeta.js";
 
-export class FileSystemDestination {
+export default class FileSystemDestination {
     basepath: string
     existingHashes: string[] | null
 

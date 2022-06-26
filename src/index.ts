@@ -11,8 +11,8 @@ import fs from 'fs'
 import path from 'path'
 
 import ArchivistParameters from "./model/ArchivistParameters.js";
-import {FileSystemSource} from "./mediasource/FileSystemSource.js";
-import {FileSystemDestination} from "./destination/FileSystemDestination.js";
+import FileSystemSource from "./mediasource/FileSystemSource.js";
+import FileSystemDestination from "./destination/FileSystemDestination.js";
 
 const LOG = console.log
 
