@@ -2,7 +2,7 @@
 
 Scan sources for media and save results. 
 
-Targetted sources will be scanned for all available files, and results will be compared 
+Targeted sources will be scanned for all available files, and results will be compared 
 with the destination specified during initialization. Anything that does not already exist in 
 the destination will be pulled from the source. 
 
@@ -14,38 +14,31 @@ So generally expect examples to align with those items.
 
 ## Usage 
 
-This program is run via Node. 
-It can be provided both a config file and runtime parameters, 
-with the latter overwriting values in the former.  
-
-Values provided to the script will determine source, destination, and 
-criteria used when searching for media. 
+This program is run via NPM. 
+It relies heavily on runtime parameters for source/destination methods.  
 
 ### Examples 
 
-**Run with config file**   
-`npm run start -- --config config.json`
+Source and destination can be mixed freely. Below are some examples.
 
-**Run with config file and overriding parameters**  
-*Note that special attention must be paid for nested objects in order to parse correctly (sourceParams)*  
-`npm run start -- --config someconfig.json --sourceType overrideSourceType --sourceParams '{\"asdf\":\"bbbb\"}'`
+**LocalStorage source and S3 destination**  
+`npm run start -- --source.type fs --source.path ./testSourceFiles --destination.type s3 --destination.bucket kaleidoscope-media --destination.path testOutputFiles --destination.region us-east-1 --serious`
+
+**4Chan source to LocalStorage destination**   
+`npm run start -- --source.type 4chan --source.path wsg --source.search ygyl --destination.type fs --destination.path .\testOutputFiles --serious`
 
 ## Configuration
 
-All parameters listed in this section can be provided either inside the configuration file 
-as a json object, or as runtime parameters.
-The naming should be identical between the two options, with runtime parameters overriding 
-any conflicting value that also exists in a provided config file. 
+All parameters listed in this section must be provided as runtime parameters.
+
+Exceptions include: 
+- AWS Credentials. These are loaded using the SDK's resolution chain. Meaning credentials file, environment variables, etc.
 
 ### Generic Configuration
-| Param           | Description                                                                                                                                                               | Supported Values      | 
-|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
-| sourceType      | Type of source that is being pulled from. This will determine the specific module that is used to interface with the source                                               | `4chan`, `directory`  |
-| sourcePath      | The path inside of the source used to search for files. This has different meaning depending on the source. Refer to individual source documentation for more information | `wsg`, `subdirectory` |
-| sourceParams    | Source-specific override values. These are source specific. Refer to individual source docs for more information                                                          | `timeout`, `delay`    |
-|                 |                                                                                                                                                                           |                       |
-| destinationType | The desired destination type. The place that downloaded files will be placed.                                                                                             | `s3`, `directory`     |
-| destinationPath | The path inside of the destination that will be used for storage. This can have different meaning depending on the destination. Refer to specific destination docs.       | `/folder/path`        |
+| Param      | Description                                                                                                                                                                     |
+|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `serious`  | This flag is required to exist before files actually download and save. Leaving this off will still query the source/destination for metadata, but no new items will be placed. |
+| `ultradry` | This flag will prevent any outgoing requests, including querying for metadata. This is disabled by default, and is really only for troubleshooting.                             |
 
 ### Sources
 
@@ -55,20 +48,66 @@ The OG. Specifying 4Chan as a source will cause this program to reach out to the
 This source relies on basic interaction with the api that is provided by the site to pull individual threads and 
 their contents. 
 
-**Source Configuration** 
+Interactions with the 4Chan api are limited by policy to 1 per second. 
+So total operations for this source can take a few minutes depending on content. 
+
+**Configuration** 
 
 | Param                     | Description                                                                                                                                                                                      | Example Values          |
 |---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| sourcePath                | A creative usage of the generic param described above. Which board to use as a source for the media scan.                                                                                        | `wsg`, `gif`            |
-| sourceParams.searchTerm   | A search string to use when looking for threads to pull media from. This would be a substring of the thread title, case-insensitive.                                                             | `ygyl`, `ylyl`, `comfy` |
-| sourceParams.requestDelay | The amount of time in milliseconds between interactions with the 4Chan api. The site requests at least a 1 second pause between operations. This parameter is not allowed to be lower than that. | `1000`, `5000`          |
+| source.type               | Identifies what type of source to load.                                                                                                                                                          | `4chan`                 |
+| source.path               | Which board to use as a source for the media scan.                                                                                                                                               | `wsg`, `gif`            |
+| source.search             | The search string to use when looking for threads to pull media from. This would be a substring of the thread title, case-insensitive.                                                           | `ygyl`, `ylyl`, `comfy` |
 
-#### Directory
+#### FileSystem
 
-Uses a file system directory as a source. 
-This is primarily for testing purposes, but could also be used for a network mount or something similar. 
+Local file directory as a source. 
+File system sources and destinations incur a bit of extra processing due to the need to scan the file when calculating 
+md5 hash.
 
-**Source Params** 
+**Configuration**
 
-*N/A*. This basic use-case is entirely covered by the generic params described above. Source path is all that is needed. 
-There are no additional source params. 
+| Param       | Description                                                                           | Example Values      |
+|-------------|---------------------------------------------------------------------------------------|---------------------|
+| source.path | Path to the source folder. The folder must already exist, and may be a relative path. | `../source_folder/` |
+
+#### S3 Source
+
+An S3 bucket as a backing source. 
+S3 locations assume a properly prepared environment in context of AWS credentials. 
+This means that credentials must either be set in a config file, or environment variables must be set properly. 
+
+**Configuration**
+
+| Param         | Description                                                                       | Example Values       |
+|---------------|-----------------------------------------------------------------------------------|----------------------|
+| source.region | AWS Region that the target S3 bucket is located in.                               | `us-east-1`          |
+| source.bucket | S3 bucket to target.                                                              | `kaleidoscope-media` |
+| source.path   | Subdirectory to store files in (yeah yeah yeah 'is a key not a directory' shush). | `output_folder/`     |
+
+
+### Destinations
+
+#### FileSystem
+
+Local storage as a destination.
+File system sources and destinations incur a bit of extra processing due to the need to scan the file when calculating
+md5 hash.
+
+**Configuration**
+
+| Param            | Description                                                                                | Example Values           |
+|------------------|--------------------------------------------------------------------------------------------|--------------------------|
+| destination.path | Path to the destination folder. The folder must already exist, and may be a relative path. | `../destination_folder/` |
+
+#### S3
+
+An S3 bucket as a backing source.
+S3 locations assume a properly prepared environment in context of AWS credentials.
+This means that credentials must either be set in a config file, or environment variables must be set properly.
+
+| Param              | Description                                                                       | Example Values       |
+|--------------------|-----------------------------------------------------------------------------------|----------------------|
+| destination.region | AWS Region that the target S3 bucket is located in.                               | `us-east-1`          |
+| destination.bucket | S3 bucket to target.                                                              | `kaleidoscope-media` |
+| destination.path   | Subdirectory to store files in (yeah yeah yeah 'is a key not a directory' shush). | `output_folder/`     |
