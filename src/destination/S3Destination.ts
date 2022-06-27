@@ -10,17 +10,29 @@ export default class S3Destination implements DestinationInterface {
     s3: S3
 
     constructor(destinationargs: any) {
+        if (!process.env.AWS_ACCESS_KEY_ID) {
+            this.printHelp()
+            throw Error('Missing AWS_ACCESS_KEY_ID in environment variables')
+        }
+        if (!process.env.AWS_SECRET_ACCESS_KEY) {
+            this.printHelp()
+            throw Error('Missing AWS_SECRET_ACCESS_KEY in environment variables')
+        }
 
         if (!destinationargs) {
+            this.printHelp()
             throw Error('Missing or undefined destinationargs found during initialization of S3Destination')
         }
         if (!destinationargs.path) {
+            this.printHelp()
             throw Error('Missing required argument for destination initialization :: ' + 'destination.path')
         }
         if (!destinationargs.bucket) {
+            this.printHelp()
             throw Error('Missing required argument for destination initialization :: ' + 'destination.bucket')
         }
         if (!destinationargs.region) {
+            this.printHelp()
             throw Error('Missing required argument for destination initialization :: ' + 'destination.region')
         }
 
@@ -28,6 +40,28 @@ export default class S3Destination implements DestinationInterface {
         this.bucket = destinationargs.bucket
         this.existingHashes = null
         this.s3 = new S3({region: destinationargs.region})
+
+        console.log('S3 Destination has been initialized.')
+        console.log(`Region: ${destinationargs.region}`)
+        console.log(`Bucket: ${this.bucket}`)
+        console.log(`Path: ${this.basepath}\n`)
+    }
+
+    public printHelp(): void {
+        console.log(
+            `
+            Required parameters for S3Destination: 
+                destination.region - The AWS region that the S3 bucket is located in.
+                destination.bucket - The name of the S3 bucket
+                destination.path   - The subfolder within the bucket to target. 
+                                     This folder does not have to already exist in the bucket.
+                                     
+            Required Environment Variables: 
+                These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
+                AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY
+            `
+        )
     }
 
     public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>): Promise<void> {

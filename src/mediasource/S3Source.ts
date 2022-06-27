@@ -3,35 +3,60 @@ import S3 from 'aws-sdk/clients/s3.js';
 import {SourceInterface} from "./SourceInterface.js";
 
 export default class S3Source implements SourceInterface {
-    id: string
     bucketname: string
     basepath: string
     s3: S3
 
     constructor(sourceargs: any) {
         if (!process.env.AWS_ACCESS_KEY_ID) {
+            this.printHelp()
             throw Error('Missing AWS_ACCESS_KEY_ID in environment variables')
         }
         if (!process.env.AWS_SECRET_ACCESS_KEY) {
+            this.printHelp()
             throw Error('Missing AWS_SECRET_ACCESS_KEY in environment variables')
         }
         if (!sourceargs) {
+            this.printHelp()
             throw Error('Missing or undefined sourceargs found during initialization of S3Source')
         }
         if (!sourceargs.path) {
+            this.printHelp()
             throw Error('Missing required argument for source initialization :: ' + 'source.path')
         }
         if (!sourceargs.bucketname) {
+            this.printHelp()
             throw Error('Missing required argument for source initialization :: ' + 'source.bucketname')
         }
         if (!sourceargs.region) {
+            this.printHelp()
             throw Error('Missing required argument for source initialization :: ' + 'source.region')
         }
 
-        this.id = 's3'
         this.bucketname = sourceargs.bucket
         this.basepath = sourceargs.path.endsWith('/') ? sourceargs.path : sourceargs.path + '/'
         this.s3 = new S3({region: sourceargs.region})
+
+        console.log('S3 Source has been initialized.')
+        console.log(`Region: ${sourceargs.region}`)
+        console.log(`Bucket: ${this.bucketname}`)
+        console.log(`Path: ${this.basepath}\n`)
+    }
+
+    public printHelp(): void {
+        console.log(
+            `
+            Required parameters for S3Source: 
+                source.region - The AWS region that the S3 bucket is located in.
+                source.bucket - The name of the S3 bucket
+                source.path   - The subfolder within the bucket to target. 
+                
+            Required Environment Variables: 
+                These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
+                AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY
+            `
+        )
     }
 
     public async scanForMetadata(): Promise<FileMeta[]> {

@@ -28,6 +28,8 @@
   },
   "dependencies": {
     "aws-sdk": "^2.1162.0",
-    "minimist": "^1.2.6"
+    "bottleneck": "^2.19.5",
+    "minimist": "^1.2.6",
+    "node-fetch": "^3.2.6"
   }
 }

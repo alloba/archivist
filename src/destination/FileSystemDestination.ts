@@ -10,15 +10,29 @@ export default class FileSystemDestination implements DestinationInterface {
 
     constructor(destinationargs: any) {
         if (!destinationargs) {
+            this.printHelp()
             throw Error('Missing or undefined destinationargs found during initialization of FileSystemDestination')
         }
         if (!destinationargs.path) {
+            this.printHelp()
             throw Error('Missing required argument for destination initialization :: ' + 'destination.path')
         }
         this.basepath = path.resolve(process.cwd(), destinationargs.path)
         this.existingMeta = null
+
+        console.log('File System destination has been initialized.')
+        console.log(`Folder Path: ${this.basepath}\n`)
     }
 
+    public printHelp(): void {
+        console.log(
+            `
+            Required parameters for FileSystemDestination: 
+                destination.path - The path to the folder that is being targeted. 
+                                   The folder must already exist. This path can be relative.
+            `
+        )
+    }
 
     public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>): Promise<void> {
         if (await this.doesFileAlreadyExist(filemeta)) {
