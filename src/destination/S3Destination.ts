@@ -24,7 +24,7 @@ export default class S3Destination implements DestinationInterface {
             throw Error('Missing required argument for destination initialization :: ' + 'destination.region')
         }
 
-        this.basepath = destinationargs.path
+        this.basepath = destinationargs.path.endsWith('/') ? destinationargs.path : destinationargs.path + '/'
         this.bucket = destinationargs.bucket
         this.existingHashes = null
         this.s3 = new S3({region: destinationargs.region})

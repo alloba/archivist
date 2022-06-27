@@ -30,7 +30,7 @@ export default class S3Source implements SourceInterface {
 
         this.id = 's3'
         this.bucketname = sourceargs.bucket
-        this.basepath = sourceargs.path
+        this.basepath = sourceargs.path.endsWith('/') ? sourceargs.path : sourceargs.path + '/'
         this.s3 = new S3({region: sourceargs.region})
     }
 
