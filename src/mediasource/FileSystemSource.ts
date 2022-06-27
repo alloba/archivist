@@ -1,10 +1,10 @@
 import path from 'path'
 import fs from 'fs'
-import crypto from 'crypto'
 import FileMeta from "../model/FileMeta.js";
 import FileUtils from "../FileUtils.js";
+import {SourceInterface} from "./SourceInterface.js";
 
-export default class FileSystemSource {
+export default class FileSystemSource implements SourceInterface {
     id: string
     path: string
 

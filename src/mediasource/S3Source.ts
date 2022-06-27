@@ -1,7 +1,8 @@
 import FileMeta from "../model/FileMeta.js";
 import S3 from 'aws-sdk/clients/s3.js';
+import {SourceInterface} from "./SourceInterface.js";
 
-export default class S3Source {
+export default class S3Source implements SourceInterface {
     id: string
     bucketname: string
     basepath: string

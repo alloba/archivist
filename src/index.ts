@@ -48,8 +48,7 @@ const sourceMeta = await mediasource.scanForMetadata()
 const destinationHashes = await mediadestination.getExistingMeta().then(x => x.map(z => z.md5))
 const uniqueFromSource = sourceMeta.filter(x => !destinationHashes.includes(x.md5))
 
-LOG(`Source - ${sourceMeta.length} items found`)
-LOG(`Source - ${uniqueFromSource.length} items found not already in destination`)
+LOG(`Source - ${sourceMeta.length} items found, ${uniqueFromSource.length} of which are unique.`)
 // endregion
 
 // region Save Files

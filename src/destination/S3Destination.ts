@@ -1,8 +1,9 @@
 import FileMeta from "../model/FileMeta.js";
 import S3 from "aws-sdk/clients/s3.js";
 import FileUtils from "../FileUtils.js";
+import {DestinationInterface} from "./DestinationInterface.js";
 
-export default class S3Destination {
+export default class S3Destination implements DestinationInterface {
     basepath: string
     existingHashes: string[] | null
     bucket: string

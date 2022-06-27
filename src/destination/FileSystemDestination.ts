@@ -2,10 +2,11 @@ import path from 'path'
 import fs from 'fs'
 import FileMeta from "../model/FileMeta.js";
 import FileUtils from "../FileUtils.js";
+import {DestinationInterface} from "./DestinationInterface.js";
 
-export default class FileSystemDestination {
+export default class FileSystemDestination implements DestinationInterface {
     basepath: string
-    existingHashes: string[] | null
+    existingMeta: FileMeta[] | null
 
     constructor(destinationargs: any) {
         if(!destinationargs){
@@ -15,7 +16,7 @@ export default class FileSystemDestination {
             throw Error('Missing required argument for destination initialization :: ' + 'destination.path')
         }
         this.basepath = path.resolve(process.cwd(), destinationargs.path)
-        this.existingHashes = null
+        this.existingMeta = null
     }
 
 
@@ -27,7 +28,7 @@ export default class FileSystemDestination {
         const newpath = path.resolve(this.basepath, FileUtils.getUniqueName(filemeta.name))
         return rawfilepromise
             .then(raw => fs.promises.writeFile(newpath, raw))
-            .then(_ => this.existingHashes?.push(filemeta.md5))
+            .then(_ => this.existingMeta?.push(filemeta))
             .then(() => Promise.resolve())
     }
 
@@ -39,14 +40,14 @@ export default class FileSystemDestination {
             return new FileMeta(path.basename(uri), uri, path.extname(uri), FileUtils.getMd5(rawfile))
         })
         const metaresult = await Promise.all(meta)
-        this.existingHashes = metaresult.map(x => x.md5)
+        this.existingMeta = metaresult
         return metaresult
     }
 
-    public async doesFileAlreadyExist(filemeta: FileMeta): Promise<boolean> {
-        if (this.existingHashes == null) {
-            this.existingHashes = await this.getExistingMeta().then(x => x.map(z => z.md5))
+    private async doesFileAlreadyExist(filemeta: FileMeta): Promise<boolean> {
+        if (this.existingMeta == null) {
+            this.existingMeta = await this.getExistingMeta()
         }
-        return Promise.resolve((this.existingHashes as string[]).includes(filemeta.md5))
+        return this.existingMeta.map(z => z.md5).includes(filemeta.md5)
     }
 }
