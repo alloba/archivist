@@ -45,6 +45,7 @@ export default class S3Destination implements DestinationInterface {
             Bucket: this.bucket,
             Key: this.basepath + filename,
             Body: filecontents,
+            ContentType: this.determineContentType(filemeta),
             ACL: 'public-read'
         }).promise()
         return Promise.resolve()
@@ -87,4 +88,14 @@ export default class S3Destination implements DestinationInterface {
         return Promise.resolve((this.existingHashes as string[]).includes(filemeta.md5))
     }
 
+    private determineContentType(filemeta: FileMeta): string {
+        switch (filemeta.extension){
+            case '.webm': {
+                return 'video/webm'
+            }
+            default: {
+                throw Error('Unsupported extension for file detected. Refusing to save to S3. :: ' + filemeta.name)
+            }
+        }
+    }
 }
