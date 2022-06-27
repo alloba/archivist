@@ -34,10 +34,10 @@ export class ChanSource implements SourceInterface {
     public printHelp(): void {
         console.log(
             `
-            Required parameters for 4ChanSource: 
-                destination.path   - The board to use. wsg/gif/etc.
-                destination.search - The search term to use while looking for threads. 
-                                     The term only has to exist within the thread title, it does not have to be a full match. 
+Required parameters for 4ChanSource: 
+    destination.path   - The board to use. wsg/gif/etc.
+    destination.search - The search term to use while looking for threads. 
+                         The term only has to exist within the thread title, it does not have to be a full match. 
             `
         )
     }

@@ -26,9 +26,9 @@ export default class FileSystemSource implements SourceInterface {
     public printHelp(): void {
         console.log(
             `
-            Required parameters for FileSystemSource: 
-                destination.path - The path to the folder that is being targeted. 
-                                   The folder must already exist. This path can be relative. 
+Required parameters for FileSystemSource: 
+    destination.path - The path to the folder that is being targeted. 
+                       The folder must already exist. This path can be relative. 
             `
         )
     }

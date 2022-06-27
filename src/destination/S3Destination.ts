@@ -50,16 +50,16 @@ export default class S3Destination implements DestinationInterface {
     public printHelp(): void {
         console.log(
             `
-            Required parameters for S3Destination: 
-                destination.region - The AWS region that the S3 bucket is located in.
-                destination.bucket - The name of the S3 bucket
-                destination.path   - The subfolder within the bucket to target. 
-                                     This folder does not have to already exist in the bucket.
-                                     
-            Required Environment Variables: 
-                These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
-                AWS_ACCESS_KEY_ID
-                AWS_SECRET_ACCESS_KEY
+Required parameters for S3Destination: 
+    destination.region - The AWS region that the S3 bucket is located in.
+    destination.bucket - The name of the S3 bucket
+    destination.path   - The subfolder within the bucket to target. 
+                         This folder does not have to already exist in the bucket.
+                         
+Required Environment Variables: 
+    These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
+    AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY
             `
         )
     }

@@ -46,15 +46,15 @@ export default class S3Source implements SourceInterface {
     public printHelp(): void {
         console.log(
             `
-            Required parameters for S3Source: 
-                source.region - The AWS region that the S3 bucket is located in.
-                source.bucket - The name of the S3 bucket
-                source.path   - The subfolder within the bucket to target. 
-                
-            Required Environment Variables: 
-                These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
-                AWS_ACCESS_KEY_ID
-                AWS_SECRET_ACCESS_KEY
+Required parameters for S3Source: 
+    source.region - The AWS region that the S3 bucket is located in.
+    source.bucket - The name of the S3 bucket
+    source.path   - The subfolder within the bucket to target. 
+    
+Required Environment Variables: 
+    These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
+    AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY
             `
         )
     }

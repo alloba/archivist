@@ -27,9 +27,9 @@ export default class FileSystemDestination implements DestinationInterface {
     public printHelp(): void {
         console.log(
             `
-            Required parameters for FileSystemDestination: 
-                destination.path - The path to the folder that is being targeted. 
-                                   The folder must already exist. This path can be relative.
+Required parameters for FileSystemDestination: 
+    destination.path - The path to the folder that is being targeted. 
+                       The folder must already exist. This path can be relative.
             `
         )
     }
