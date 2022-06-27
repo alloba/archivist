@@ -6,7 +6,7 @@
   image: node:17
   script:
     - npm ci
-    - npm run start -- --source.type 4chan --source.path wsg --source.search ygyl --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path wsg         --serious
-    - npm run start -- --source.type 4chan --source.path wsg --source.search gondola --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path gondola  --serious
-    - npm run start -- --source.type 4chan --source.path wsg --source.search comfy --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path comfy      --serious
+    - npm run start -- --source.type 4chan --source.path wsg --source.search ygyl    --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path wsg     --serious
+    - npm run start -- --source.type 4chan --source.path wsg --source.search gondola --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path gondola --serious
+    - npm run start -- --source.type 4chan --source.path wsg --source.search comfy   --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path comfy   --serious
 
