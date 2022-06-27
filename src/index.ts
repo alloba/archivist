@@ -18,8 +18,8 @@ console.log('-Beginning Archivist Operations-')
 
 // region Init Arguments
 // Dry run enabled by default. User has to explicitly mark operations via process args.
-let dryRun = false
-let ultraDry = true
+let dryRun = true
+let ultraDry = false
 
 const args = minimist(process.argv.slice(2)); //slice off executable path and file path
 if (!args.source || !args.destination) {
