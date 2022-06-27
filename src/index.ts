@@ -54,9 +54,9 @@ LOG(`Source - ${sourceMeta.length} items found, ${uniqueFromSource.length} of wh
 // region Save Files
 await uniqueFromSource
     .map(x => ({meta: x, rawpromise: mediasource.downloadFile(x)}))
-    .forEach(z => {
+    .forEach(async z => {
         LOG(`Saving ${z.meta.name} to destination...`)
-        mediadestination.saveMedia(z.meta, z.rawpromise)
+        await mediadestination.saveMedia(z.meta, z.rawpromise)
         LOG('Done')
     })
 // endregion
