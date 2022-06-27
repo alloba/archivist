@@ -8,14 +8,6 @@ export default class S3Source implements SourceInterface {
     s3: S3
 
     constructor(sourceargs: any) {
-        if (!process.env.AWS_ACCESS_KEY_ID) {
-            this.printHelp()
-            throw Error('Missing AWS_ACCESS_KEY_ID in environment variables')
-        }
-        if (!process.env.AWS_SECRET_ACCESS_KEY) {
-            this.printHelp()
-            throw Error('Missing AWS_SECRET_ACCESS_KEY in environment variables')
-        }
         if (!sourceargs) {
             this.printHelp()
             throw Error('Missing or undefined sourceargs found during initialization of S3Source')
@@ -50,11 +42,6 @@ Required parameters for S3Source:
     source.region - The AWS region that the S3 bucket is located in.
     source.bucket - The name of the S3 bucket
     source.path   - The subfolder within the bucket to target. 
-    
-Required Environment Variables: 
-    These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
-    AWS_ACCESS_KEY_ID
-    AWS_SECRET_ACCESS_KEY
             `
         )
     }

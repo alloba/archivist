@@ -10,15 +10,6 @@ export default class S3Destination implements DestinationInterface {
     s3: S3
 
     constructor(destinationargs: any) {
-        if (!process.env.AWS_ACCESS_KEY_ID) {
-            this.printHelp()
-            throw Error('Missing AWS_ACCESS_KEY_ID in environment variables')
-        }
-        if (!process.env.AWS_SECRET_ACCESS_KEY) {
-            this.printHelp()
-            throw Error('Missing AWS_SECRET_ACCESS_KEY in environment variables')
-        }
-
         if (!destinationargs) {
             this.printHelp()
             throw Error('Missing or undefined destinationargs found during initialization of S3Destination')
@@ -55,11 +46,6 @@ Required parameters for S3Destination:
     destination.bucket - The name of the S3 bucket
     destination.path   - The subfolder within the bucket to target. 
                          This folder does not have to already exist in the bucket.
-                         
-Required Environment Variables: 
-    These must both be set OUTSIDE of script execution. They are used to configure the S3 client object.
-    AWS_ACCESS_KEY_ID
-    AWS_SECRET_ACCESS_KEY
             `
         )
     }
