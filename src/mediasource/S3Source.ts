@@ -3,22 +3,34 @@ import S3 from 'aws-sdk/clients/s3.js';
 
 export default class S3Source {
     id: string
+    bucketname: string
     basepath: string
     s3: S3
-    bucketname: string
 
-    constructor(basepath: string, region: string, bucket: string) {
+    constructor(sourceargs: any ) {
         if(!process.env.AWS_ACCESS_KEY_ID){
             throw Error('Missing AWS_ACCESS_KEY_ID in environment variables')
         }
         if(!process.env.AWS_SECRET_ACCESS_KEY){
             throw Error('Missing AWS_SECRET_ACCESS_KEY in environment variables')
         }
+        if(!sourceargs){
+            throw Error('Missing or undefined sourceargs found during initialization of S3Source')
+        }
+        if(!sourceargs.path){
+            throw Error('Missing required argument for source initialization :: ' + 'source.path')
+        }
+        if(!sourceargs.bucketname){
+            throw Error('Missing required argument for source initialization :: ' + 'source.bucketname')
+        }
+        if(!sourceargs.region){
+            throw Error('Missing required argument for source initialization :: ' + 'source.region')
+        }
 
         this.id = 's3'
-        this.basepath = basepath
-        this.bucketname = bucket
-        this.s3 = new S3({region: region})
+        this.bucketname = sourceargs.bucket
+        this.basepath = sourceargs.path
+        this.s3 = new S3({region: sourceargs.region})
     }
 
     public async scanForMetadata(): Promise<FileMeta[]>{
