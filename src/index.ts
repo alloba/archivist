@@ -14,8 +14,7 @@ import FileSystemDestination from "./destination/FileSystemDestination.js";
 import S3Destination from "./destination/S3Destination.js";
 import {ChanSource} from "./mediasource/ChanSource.js";
 
-const LOG = console.log
-LOG('-Beginning Archivist Operations-')
+console.log('-Beginning Archivist Operations-')
 
 // region Init Arguments
 // Dry run enabled by default. User has to explicitly mark operations via process args.
@@ -64,7 +63,7 @@ if(ultraDry){
 const sourceMeta = await mediasource.scanForMetadata()
 const destinationHashes = await mediadestination.getExistingMeta().then(x => x.map(z => z.md5))
 const uniqueFromSource = sourceMeta.filter(x => !destinationHashes.includes(x.md5))
-LOG(`Source - ${sourceMeta.length} items found, ${uniqueFromSource.length} of which are unique.`)
+console.log(`Source - ${sourceMeta.length} items found, ${uniqueFromSource.length} of which are unique.`)
 // endregion
 
 // region Save Files
@@ -74,11 +73,11 @@ if(dryRun || ultraDry){
 }
 const downloadTargets = uniqueFromSource.map(x => ({meta: x, rawpromise: mediasource.downloadFile(x)}))
 for (let i = 0; i < downloadTargets.length; i++) {
-    LOG(`${i + 1}/${downloadTargets.length} - ${downloadTargets[i].meta.name}`)
+    console.log(`${i + 1}/${downloadTargets.length} - ${downloadTargets[i].meta.name}`)
     await mediadestination.saveMedia(downloadTargets[i].meta, downloadTargets[i].rawpromise)
 }
 // endregion
 
-LOG('-Concluded Archivist Operations-')
+console.log('-Concluded Archivist Operations-')
 
 
