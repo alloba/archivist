@@ -18,7 +18,7 @@ console.log('-Beginning Archivist Operations-')
 
 // region Init Arguments
 // Dry run enabled by default. User has to explicitly mark operations via process args.
-let dryRun = true
+let serious = false
 let ultraDry = false
 
 const args = minimist(process.argv.slice(2)); //slice off executable path and file path
@@ -29,11 +29,11 @@ if (!args.source.type || !args.destination.type) {
     throw Error('Both source and destination must have a specified type (source.type/destination.type args).')
 }
 
-if(args.dry){
-    dryRun = args.dry
+if(args.serious){
+    serious = true
 }
 if(args.ultradry){
-    ultraDry = args.ultradry
+    ultraDry = true
 }
 // endregion
 
@@ -55,7 +55,7 @@ const mediadestination = new destinationMap[mediadestinationKey as keyof typeof 
 // endregion
 
 // region Find Unique Files
-if(ultraDry){
+if (ultraDry) {
     console.log('Terminating early due to Ultra Dry Run flag.')
     process.exit(0)
 }
@@ -67,8 +67,8 @@ console.log(`Source - ${sourceMeta.length} items found, ${uniqueFromSource.lengt
 // endregion
 
 // region Save Files
-if(dryRun || ultraDry){
-    console.log('Terminating early due to Dry Run flag.')
+if (!serious || ultraDry) {
+    console.log('Terminating early due to lack of serious flag.')
     process.exit(0)
 }
 const downloadTargets = uniqueFromSource.map(x => ({meta: x, rawpromise: mediasource.downloadFile(x)}))
