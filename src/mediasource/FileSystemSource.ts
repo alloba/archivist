@@ -9,10 +9,10 @@ export default class FileSystemSource implements SourceInterface {
     path: string
 
     constructor(sourceargs: any) {
-        if(!sourceargs){
+        if (!sourceargs) {
             throw Error('Missing or undefined sourceargs found during initialization of FileSystemSource')
         }
-        if(!sourceargs.path){
+        if (!sourceargs.path) {
             throw Error('Missing required argument for source initialization :: ' + 'source.path')
         }
 

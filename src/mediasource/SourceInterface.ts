@@ -6,7 +6,7 @@ export interface SourceInterface {
 }
 
 interface ScanForMetadataFunction {
-    () : Promise<Array<FileMeta>>
+    (): Promise<Array<FileMeta>>
 }
 
 interface DownloadFileFunction {

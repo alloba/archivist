@@ -9,10 +9,10 @@ export default class FileSystemDestination implements DestinationInterface {
     existingMeta: FileMeta[] | null
 
     constructor(destinationargs: any) {
-        if(!destinationargs){
+        if (!destinationargs) {
             throw Error('Missing or undefined destinationargs found during initialization of FileSystemDestination')
         }
-        if(!destinationargs.path){
+        if (!destinationargs.path) {
             throw Error('Missing required argument for destination initialization :: ' + 'destination.path')
         }
         this.basepath = path.resolve(process.cwd(), destinationargs.path)
@@ -21,7 +21,7 @@ export default class FileSystemDestination implements DestinationInterface {
 
 
     public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>): Promise<void> {
-        if(await this.doesFileAlreadyExist(filemeta)){
+        if (await this.doesFileAlreadyExist(filemeta)) {
             return Promise.resolve()
         }
 
