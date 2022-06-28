@@ -1,6 +1,7 @@
 import FileMeta from "../model/FileMeta.js";
-import S3 from 'aws-sdk/clients/s3.js';
+import {ListObjectsV2Output, S3} from "@aws-sdk/client-s3";
 import {SourceInterface} from "./SourceInterface.js";
+import {Readable} from "stream";
 
 export default class S3Source implements SourceInterface {
     bucketname: string
@@ -16,7 +17,7 @@ export default class S3Source implements SourceInterface {
             this.printHelp()
             throw Error('Missing required argument for source initialization :: ' + 'source.path')
         }
-        if (!sourceargs.bucketname) {
+        if (!sourceargs.bucket) {
             this.printHelp()
             throw Error('Missing required argument for source initialization :: ' + 'source.bucketname')
         }
@@ -47,17 +48,15 @@ Required parameters for S3Source:
     }
 
     public async scanForMetadata(): Promise<FileMeta[]> {
-        console.log('entering scan method')
         let imageMetas: FileMeta[] = [];
         let continuationToken = undefined
         while (true) {
-            const datachunk: S3.ListObjectsV2Output = await this.s3.listObjectsV2({
+            const datachunk: ListObjectsV2Output = await this.s3.listObjectsV2({
                 Delimiter: "",
                 Bucket: this.bucketname,
                 Prefix: this.basepath,
                 ContinuationToken: continuationToken
-            }).promise();
-            console.log(datachunk)
+            });
             datachunk.Contents?.filter(x => x !== undefined)
                 .map(x => {
                     if (x.Key == undefined) {
@@ -79,10 +78,25 @@ Required parameters for S3Source:
     }
 
     public async downloadFile(filemeta: FileMeta): Promise<Buffer> {
-        const bucketObject = await this.s3.getObject({Bucket: this.bucketname, Key: filemeta.uri}).promise()
-        if (bucketObject.Body == undefined) {
-            throw Error('Got an empty body on S3 download operation for item. Aborting. :: ' + filemeta.uri)
-        }
-        return bucketObject.Body as Buffer
+        // This is a kind of workaround to get the response body back to being a buffer, await from the
+        // readable stream that aws shifted to for v3.
+        // It feels like it goes kind of slowly, but it does indeed work.
+        // (Also I'm basically never going to use this so who cares)
+        return new Promise( async (resolve, reject) => {
+            try {
+                const bucketObject = await this.s3.getObject({Bucket: this.bucketname, Key: filemeta.uri})
+                if (bucketObject.Body == undefined) {
+                    reject(Error('Got an empty body on S3 download operation for item. Aborting. :: ' + filemeta.uri))
+                }
+
+                let chunks: any[] = []
+                let bod = bucketObject.Body as Readable
+                bod.once('error', err => reject(err))
+                bod.on('data', chunk => chunks.push(chunk))
+                bod.once('end', () => resolve(Buffer.concat(chunks)))
+            } catch (err){
+                reject(err)
+            }
+        })
     }
 }

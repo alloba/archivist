@@ -1,5 +1,5 @@
 import FileMeta from "../model/FileMeta.js";
-import S3 from "aws-sdk/clients/s3.js";
+import {ListObjectsV2CommandOutput, S3} from "@aws-sdk/client-s3";
 import FileUtils from "../FileUtils.js";
 import {DestinationInterface} from "./DestinationInterface.js";
 
@@ -59,15 +59,13 @@ Required parameters for S3Destination:
         const filename = FileUtils.getUniqueName(filemeta.name)
         const filecontents = await rawfilepromise
 
-        //TODO: trying to get away with leaving out contenttype to easily handle future files, but need to verify that this works.
-        //TODO: also should do proper error handling on this operation...
         await this.s3.putObject({
             Bucket: this.bucket,
             Key: this.basepath + filename,
             Body: filecontents,
             ContentType: this.determineContentType(filemeta),
             ACL: 'public-read'
-        }).promise()
+        })
         return Promise.resolve()
     }
 
@@ -75,12 +73,12 @@ Required parameters for S3Destination:
         let imageMetas: FileMeta[] = [];
         let continuationToken = undefined
         while (true) {
-            const datachunk: S3.ListObjectsV2Output = await this.s3.listObjectsV2({
+            const datachunk: ListObjectsV2CommandOutput = await this.s3.listObjectsV2({
                 Delimiter: "",
                 Bucket: this.bucket,
                 Prefix: this.basepath,
                 ContinuationToken: continuationToken
-            }).promise();
+            });
             datachunk.Contents?.filter(x => x !== undefined)
                 .map(x => {
                     if (x.Key == undefined) {
