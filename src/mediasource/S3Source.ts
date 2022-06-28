@@ -82,6 +82,7 @@ Required parameters for S3Source:
         // readable stream that aws shifted to for v3.
         // It feels like it goes kind of slowly, but it does indeed work.
         // (Also I'm basically never going to use this so who cares)
+        // big thanks to stack overflow. https://stackoverflow.com/a/36944450
         return new Promise( async (resolve, reject) => {
             try {
                 const bucketObject = await this.s3.getObject({Bucket: this.bucketname, Key: filemeta.uri})
