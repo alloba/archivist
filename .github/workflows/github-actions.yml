@@ -1,0 +1,27 @@
+name: Download Content
+on:
+  workflow_run:
+    types:
+      - requested
+  schedule:
+    - cron: '0 0 * * *'
+
+
+jobs:
+  Download:
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Node setup
+        uses: actions/setup-node@v3
+      - name: Project pull
+        uses: actions/checkout@v3
+      - name: Dependency pull
+        run: npm ci
+      - name: Media download
+        run: |
+          npm run start -- --source.type 4chan --source.path wsg --source.search ygyl    --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path wsg     --serious
+          npm run start -- --source.type 4chan --source.path wsg --source.search gondola --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path gondola --serious
+          npm run start -- --source.type 4chan --source.path wsg --source.search comfy   --destination.type s3 --destination.region us-east-1 --destination.bucket kaleidoscope-media --destination.path comfy   --serious
