@@ -1,8 +1,6 @@
 name: Download Content
 on:
-  workflow_run:
-    types:
-      - requested
+  workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'
 
