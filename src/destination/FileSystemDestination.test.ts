@@ -198,6 +198,25 @@ describe('FileSystemDestination', () => {
             assert.deepEqual(existing.map(x => x.md5), [md5('content')])
         })
 
+        it('saves under the requested filename when one is given', async () => {
+            const dest = newDest()
+            await dest.saveMedia(meta('new.webm', 'content'), Promise.resolve(Buffer.from('content')), 'chosen_123.webm')
+            await dest.close()
+
+            assert.equal(fs.readFileSync(path.join(dir, 'chosen_123.webm'), 'utf8'), 'content')
+            assert.deepEqual((await readManifest(dir))?.map(x => x.name), ['chosen_123.webm'])
+        })
+
+        it('refuses unsafe requested filenames', async () => {
+            const dest = newDest()
+            for (const bad of ['../escape.webm', 'sub/dir.webm', MANIFEST_FILENAME, 'x.webm' + TEMP_SUFFIX]) {
+                await assert.rejects(
+                    dest.saveMedia(meta('new.webm', 'content'), Promise.resolve(Buffer.from('content')), bad),
+                    /unsafe filename/)
+            }
+            assert.deepEqual(fs.readdirSync(dir).filter(x => x !== MANIFEST_FILENAME), [])
+        })
+
         it('refuses to overwrite when the generated name collides', async () => {
             mock.method(FileUtils, 'getUniqueName', () => 'fixed.webm')
             const dest = newDest()

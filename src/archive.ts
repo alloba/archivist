@@ -1,6 +1,7 @@
 import {SourceInterface} from "./mediasource/SourceInterface.js";
 import {DestinationInterface} from "./destination/DestinationInterface.js";
 import FileMeta from "./model/FileMeta.js";
+import FileUtils from "./FileUtils.js";
 
 /**
  * Core of a run: figure out what each destination is missing, then fetch each needed file once from the source
@@ -42,13 +43,15 @@ export async function archive(
 
         for (let i = 0; i < targets.length; i++) {
             console.log(`${i + 1}/${targets.length} - ${targets[i].name}`)
+            // One name for the file, shared by every destination, so the destinations stay identical to each other.
+            const filename = FileUtils.getUniqueName(targets[i].name)
             for (let d = 0; d < destinations.length; d++) {
                 if (!needed[d].has(targets[i])) {
                     continue
                 }
                 saveAttempts++
                 try {
-                    await destinations[d].saveMedia(targets[i], downloads.get(targets[i])!)
+                    await destinations[d].saveMedia(targets[i], downloads.get(targets[i])!, filename)
                 } catch (e) {
                     console.error(`Failed saving ${targets[i].name} to destination ${d + 1} :: ${e}`)
                     errors.push(e instanceof Error ? e : Error(String(e)))

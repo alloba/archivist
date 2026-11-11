@@ -146,6 +146,25 @@ describe('S3Destination', () => {
             await assert.rejects(fresh.saveMedia(meta('x.webm', 'other'), Promise.resolve(Buffer.from('other'))), /collides/)
         })
 
+        it('uploads under the requested filename when one is given', async () => {
+            const {dest, s3} = make()
+            await dest.getExistingMeta()
+
+            await dest.saveMedia(meta('new.webm', 'new'), Promise.resolve(Buffer.from('new')), 'chosen_123.webm')
+
+            assert.equal(s3.objects.has('wsg/chosen_123.webm'), true)
+        })
+
+        it('refuses unsafe requested filenames', async () => {
+            const {dest} = make()
+            await dest.getExistingMeta()
+            for (const bad of ['../x.webm', 'sub/x.webm', MANIFEST_FILENAME]) {
+                await assert.rejects(
+                    dest.saveMedia(meta('new.webm', 'new'), Promise.resolve(Buffer.from('new')), bad),
+                    /unsafe filename/)
+            }
+        })
+
         it('still refuses unsupported file types', async () => {
             const {dest} = make()
             await dest.getExistingMeta()

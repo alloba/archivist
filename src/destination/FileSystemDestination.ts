@@ -40,14 +40,17 @@ Optional parameters:
         )
     }
 
-    public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>): Promise<void> {
+    public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>, requestedName?: string): Promise<void> {
         await this.index.ensureLoaded()
         if (this.index.hasHash(filemeta.md5)) {
             return
         }
 
         const raw = await rawfilepromise
-        const filename = FileUtils.getUniqueName(filemeta.name)
+        const filename = requestedName ?? FileUtils.getUniqueName(filemeta.name)
+        if (path.basename(filename) !== filename || filename === MANIFEST_FILENAME || filename.endsWith(TEMP_SUFFIX)) {
+            throw Error('Refusing to save under an unsafe filename. :: ' + filename)
+        }
         if (this.index.hasName(filename)) {
             throw Error('Generated filename collides with an existing file. Refusing to overwrite. :: ' + filename)
         }

@@ -59,14 +59,17 @@ Optional parameters:
         )
     }
 
-    public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>): Promise<void> {
+    public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>, requestedName?: string): Promise<void> {
         await this.index.ensureLoaded()
         if (this.index.hasHash(filemeta.md5)) {
             console.log('File already exists in destination bucket. Skipping. :: ' + filemeta.name)
             return
         }
 
-        const filename = FileUtils.getUniqueName(filemeta.name)
+        const filename = requestedName ?? FileUtils.getUniqueName(filemeta.name)
+        if (filename.includes('/') || filename === MANIFEST_FILENAME) {
+            throw Error('Refusing to save under an unsafe filename. :: ' + filename)
+        }
         if (this.index.hasName(filename)) {
             throw Error('Generated filename collides with an existing object. Refusing to overwrite. :: ' + filename)
         }
