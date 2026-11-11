@@ -64,6 +64,14 @@ export default class FakeS3 {
         return {}
     }
 
+    async deleteObjects(args: any) {
+        this.calls.push({op: 'deleteObjects', args})
+        for (const {Key} of args.Delete.Objects) {
+            this.objects.delete(Key)
+        }
+        return {}
+    }
+
     async headObject(args: any) {
         this.calls.push({op: 'headObject', key: args.Key, args})
         const object = this.objects.get(args.Key)
