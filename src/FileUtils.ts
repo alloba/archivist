@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import fs from "fs";
 
 export default class FileUtils {
     public static getUniqueName(filename: string): string {
@@ -9,5 +10,16 @@ export default class FileUtils {
 
     public static getMd5(rawfile: Buffer): string {
         return crypto.createHash('md5').update(rawfile).digest('hex')
+    }
+
+    /** Streams the file through the hash, so large files are never held in memory. */
+    public static getMd5OfFile(filepath: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const hash = crypto.createHash('md5')
+            fs.createReadStream(filepath)
+                .on('error', reject)
+                .on('data', chunk => hash.update(chunk))
+                .on('end', () => resolve(hash.digest('hex')))
+        })
     }
 }

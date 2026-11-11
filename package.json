@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsc && node --test \"build/**/*.test.js\"",
     "build": "npx tsc",
     "prestart": "npx tsc",
     "start": "node ./build/index.js"

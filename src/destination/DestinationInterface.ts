@@ -3,6 +3,9 @@ import FileMeta from "../model/FileMeta.js";
 export interface DestinationInterface {
     saveMedia: SaveMediaFunction
     getExistingMeta: GetExistingMetaFunction
+
+    /** Optional hook, called once at the end of a run (even a failed one) to flush any cached state. */
+    close?: CloseFunction
 }
 
 interface SaveMediaFunction {
@@ -11,4 +14,8 @@ interface SaveMediaFunction {
 
 interface GetExistingMetaFunction {
     (): Promise<FileMeta[]>
+}
+
+interface CloseFunction {
+    (): Promise<void>
 }

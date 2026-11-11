@@ -5,7 +5,7 @@ import {DestinationInterface} from "./DestinationInterface.js";
 
 export default class S3Destination implements DestinationInterface {
     basepath: string
-    existingHashes: string[] | null
+    existingHashes: Set<string> | null
     bucket: string
     s3: S3
 
@@ -66,6 +66,7 @@ Required parameters for S3Destination:
             ContentType: this.determineContentType(filemeta),
             ACL: 'public-read'
         })
+        this.existingHashes?.add(filemeta.md5) // so duplicates within a single run are skipped
         return Promise.resolve()
     }
 
@@ -100,10 +101,9 @@ Required parameters for S3Destination:
     }
 
     public async doesFileAlreadyExist(filemeta: FileMeta): Promise<boolean> {
-        if (this.existingHashes == null) {
-            this.existingHashes = await this.getExistingMeta().then(x => x.map(z => z.md5))
-        }
-        return Promise.resolve((this.existingHashes as string[]).includes(filemeta.md5))
+        const hashes = this.existingHashes ?? new Set((await this.getExistingMeta()).map(z => z.md5))
+        this.existingHashes = hashes
+        return hashes.has(filemeta.md5)
     }
 
     private determineContentType(filemeta: FileMeta): string {
