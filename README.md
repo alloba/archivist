@@ -33,6 +33,7 @@ Index the destination args: `--destination.0.*` is the first destination, `--des
 
 Each destination decides for itself what it is missing, so destinations that drift apart will each catch up on the next run
 (as long as the source still has the file). Each needed file is downloaded once and given to every destination that needs it.
+Each file is also saved under the same unique filename in every destination, so mirrors match by name as well as by content.
 If a destination cannot be read at the start of a run, nothing is saved anywhere and the run fails.
 If a save fails partway through, the remaining files and destinations are still attempted, and the run fails at the end.
 
