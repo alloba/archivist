@@ -34,8 +34,8 @@ export default class FileSystemSource implements SourceInterface {
         console.log(
             `
 Required parameters for FileSystemSource: 
-    destination.path - The path to the folder that is being targeted. 
-                       The folder must already exist. This path can be relative. 
+    source.path - The path to the folder that is being targeted. 
+                  The folder must already exist. This path can be relative. 
 Optional parameters:
     source.requireManifest - Abort unless ${MANIFEST_FILENAME} already exists in the folder.
     source.rebuild         - Ignore cached hashes and re-hash every file in the folder.

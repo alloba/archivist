@@ -23,7 +23,7 @@ export default class S3Source implements SourceInterface {
         }
         if (!sourceargs.bucket) {
             this.printHelp()
-            throw Error('Missing required argument for source initialization :: ' + 'source.bucketname')
+            throw Error('Missing required argument for source initialization :: ' + 'source.bucket')
         }
         if (!sourceargs.region) {
             this.printHelp()

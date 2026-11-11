@@ -14,7 +14,7 @@ So generally expect examples to align with those items.
 
 ## Usage 
 
-This program is run via NPM. 
+This program is run via NPM, and needs Node 20 or newer (the AWS SDK requires it).
 It relies heavily on runtime parameters for source/destination methods.  
 
 ### Examples 
@@ -46,7 +46,9 @@ If a save fails partway through, the remaining files and destinations are still 
 All parameters listed in this section must be provided as runtime parameters.
 
 Exceptions include: 
-- AWS Credentials. These are loaded using the SDK's resolution chain. Meaning credentials file, environment variables, etc.
+- AWS Credentials. These are loaded using the SDK's resolution chain. Meaning credentials file, environment variables,
+  an `aws login` or SSO session, etc. (Sessions from `aws login` need a recent SDK, which is why `@aws-sdk/client-s3`
+  is kept up to date.)
 
 ### Generic Configuration
 | Param      | Description                                                                                                                                                                     |
@@ -110,6 +112,7 @@ their contents.
 
 Interactions with the 4Chan api are limited by policy to 1 per second. 
 So total operations for this source can take a few minutes depending on content. 
+Only `.webm` files are collected. 
 
 **Configuration** 
 
@@ -121,7 +124,7 @@ So total operations for this source can take a few minutes depending on content.
 
 #### FileSystem
 
-Local file directory as a source.
+Local file directory as a source. Subfolders are not scanned, and files without an extension are ignored.
 Hashes are cached in a manifest in the folder (see "Hash manifests").
 
 **Configuration**
@@ -167,23 +170,12 @@ along with subfolders. Files that were not saved by this tool are picked up and 
 | destination.requireManifest | Optional flag. Abort unless a manifest already exists in the folder. Use this for network shares: if the share is unmounted, the folder is empty and the run fails instead of writing to the wrong disk. Create the manifest by running once without this flag. | `--destination.requireManifest` |
 | destination.rebuild         | Optional flag. Ignore the cached hashes and re-hash every file. Useful as an occasional audit.                                                                                                                                             | `--destination.rebuild`  |
 
-### Saving to a NAS from CI
-
-The scheduled workflow runs on a Gitea runner whose jobs execute in ephemeral containers, which cannot see the NAS
-unless the folder is bind-mounted into them. See the `home-server` repo (`CLAUDE.md`, "Gitea & CI/CD") for how that
-mechanism works. For this project, the runner's `config.yaml` needs:
-
-- `container.options`: `-v /mnt/nfs/volume1/video/kaleidoscope-media:/archive/kaleidoscope-media`
-- `container.valid_volumes`: `/mnt/nfs/volume1/video/kaleidoscope-media` (without this entry the bind is silently dropped)
-
-Before the first run, create the `wsg`, `gondola` and `comfy` folders on the NAS and run once without
-`requireManifest` (or copy in an existing bucket mirror) so each has a manifest.
-
 #### S3
 
-An S3 bucket as a backing source.
+An S3 bucket as a destination.
 S3 locations assume a properly prepared environment in context of AWS credentials.
 This means that credentials must either be set in a config file, or environment variables must be set properly.
+Only `.webm` files can be saved (any other extension fails the save, since the content type is not known).
 
 | Param              | Description                                                                       | Example Values       |
 |--------------------|-----------------------------------------------------------------------------------|----------------------|
@@ -193,4 +185,105 @@ This means that credentials must either be set in a config file, or environment 
 
 Hashes are cached in a manifest object under the path, `<path>/.archivist-manifest.json`, which is saved without the
 public ACL that the media gets. Optional: `destination.requireManifest`, `destination.rebuild`,
-`destination.seedFromEtag` (see "Hash manifests").
+`destination.seedFromEtag`, `destination.publishIndex` (see "Hash manifests" and "Published index").
+
+## Saving to a NAS from CI
+
+The scheduled workflow (`.github/workflows/github-actions.yml`) runs on a Gitea runner whose jobs execute in ephemeral
+containers, which cannot see the NAS unless the folder is bind-mounted into them. See the `home-server` repo
+(`CLAUDE.md`, "Gitea & CI/CD") for how that mechanism works. For this project, the runner's `config.yaml` needs:
+
+- `container.options`: `-v /mnt/nfs/volume1/video/kaleidoscope-media:/archive/kaleidoscope-media`
+- `container.valid_volumes`: `/mnt/nfs/volume1/video/kaleidoscope-media` (without this entry the bind is silently dropped)
+
+Before the first run, create the `wsg`, `gondola` and `comfy` folders on the NAS and run once without
+`requireManifest` (or copy in an existing bucket mirror) so each has a manifest.
+
+## Maintenance tools
+
+One-off utilities that sit beside archivist. None of them run as part of `npm run start` or CI. (Bootstrapping an S3
+manifest, `npm run seed-s3-manifest`, is covered under "Hash manifests".)
+
+### Finding and removing near-duplicate videos and audio
+
+Archivist de-dupes by md5, so the same video re-encoded (different quality, bitrate or container) is saved as a
+separate file. Three tools find those and clean them up, in this order:
+
+1. `tools/find_similar_media.py` scans a folder (read-only) and writes a report.
+2. `tools/remove_similar_media.py` removes the duplicates and unreadable files it lists, from a folder.
+3. `npm run prune-s3-from-report` removes the same files from S3.
+
+**Requirements for the Python tools:** Python 3.9+, `ffmpeg` and `ffprobe` on the PATH, and `pip install numpy`.
+
+#### 1. Scan
+
+`python tools/find_similar_media.py <folder> -o duplicates.json`
+
+Video and audio are fingerprinted and compared **separately**, so the report has one set of groups for each.
+- Video: 10 frames at fixed relative positions through the file (5%, 15%, ... 95%), each shrunk to 9x8 greyscale and
+  turned into a 64-bit difference hash.
+- Audio: 10 two-second windows at the same positions, hashed from how energy in 8 frequency bands rises and falls
+  (so volume changes don't matter). Silent audio is skipped.
+- Two files match when their durations are within 2% and at least 80% of the sampled positions are within a
+  bit-distance threshold. Matches are merged into groups, so a group can chain A~B~C.
+
+Positions are relative to the duration, so a **trimmed or extended copy won't match**, and cropped or letterboxed copies
+usually won't either. Tuning flags: `--video-bits` (10), `--audio-bits` (12), `--min-score` (0.8),
+`--duration-tolerance` (0.02), `--workers`, `--no-recurse`.
+
+A `.json` output is the report the other tools read (paths relative to the scanned folder, plus size, resolution and
+bitrate). Any other extension gives a human-readable text report instead. Fingerprints are cached in
+`<output>.cache.json` (or `--cache`), keyed by size and modification time, so re-running only processes new or changed
+files. Files that `ffprobe` cannot read are listed as "unreadable".
+
+#### 2. Remove from the folder
+
+`python tools/remove_similar_media.py duplicates.json --root <folder>`
+
+The report holds relative paths, so you can scan one copy (say, a local one) and apply the removal to another copy of
+the same tree (say, the NAS) by pointing `--root` at it. It is a **dry run unless `--apply`** is given, and ends with a
+summary by reason.
+
+| Flag                | Effect                                                                                                      |
+|---------------------|-------------------------------------------------------------------------------------------------------------|
+| `--apply`           | Actually remove files.                                                                                      |
+| `--quarantine DIR`  | Move removed files to `DIR` (subpaths kept) instead of deleting them.                                       |
+| `--video-only`      | Remove video duplicates on a visual match alone. By default the audio must match too.                       |
+| `--keep-unreadable` | Leave unreadable files alone. By default they are re-checked with `ffprobe` and removed if still unreadable. |
+
+- **What counts as a duplicate:** a video file is removed only if it matches the group's keeper both visually and by
+  audio. A visual match with different audio (a different dub, say) is kept and listed. If neither file has usable
+  audio, the visual match alone is accepted and labelled as such. Audio-only files are removed on an audio match, and
+  a video file is never removed because its soundtrack matched.
+- **Which copy is kept:** for video, the highest resolution, then bitrate, then size. For audio, the highest bitrate,
+  then size. Ties go to the shortest path.
+- **Safeguards:** a file is only touched if it exists under `--root` with exactly the size recorded in the report, and
+  a file that is the keeper of any group is never removed.
+
+#### 3. Remove from S3
+
+`npm run prune-s3-from-report -- --region us-east-1 --bucket kaleidoscope-media --nas //guff-nas/video/kaleidoscope-media --report duplicates.json`
+
+This deliberately does **not** mirror the NAS. It only considers files named in the report, and of those it deletes
+the ones that are now gone from the NAS. Each first-level subfolder is its own location (own manifest and index), matched
+to the same subfolder name in S3. Add `--apply` to delete (dry run otherwise), and `--path` if the NAS folder
+corresponds to a prefix inside the bucket instead of the bucket root. An object is deleted only when:
+
+- the file is absent from the NAS, and its NAS subfolder has a `.archivist-manifest.json` (a subfolder without one,
+  such as an unmounted share, is skipped and reported);
+- for duplicates, another member of its group still exists on the NAS, so the last copy is never removed;
+- the S3 object exists with the size recorded in the report.
+
+Afterwards each affected location's S3 manifest has the deleted names removed, and its published index is rewritten
+if it has one.
+
+#### Things to know
+
+- Deletes from S3 are permanent unless the bucket has versioning turned on (it did not when this was written), and
+  the S3 tool has no quarantine. Read the dry run first.
+- Removing a file also removes its hash from the manifest, so if a source still has that file, the next archivist run
+  will save it again.
+- The NAS manifests and published indexes are refreshed by the next archivist run against that folder. The S3 ones are
+  updated by the prune tool.
+- Keep the `.json` report: it is the record of what was removed and which copy was kept. The report, the cache and the
+  text output are generated, and are not committed.

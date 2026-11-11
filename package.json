@@ -12,16 +12,8 @@
     "prestart": "npx tsc",
     "start": "node ./build/index.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@gitlab.com/alloba/archivisit.git"
-  },
   "author": "Alloba",
   "license": "ISC",
-  "bugs": {
-    "url": "https://gitlab.com/alloba/archivisit/issues"
-  },
-  "homepage": "https://gitlab.com/alloba/archivisit#readme",
   "devDependencies": {
     "@types/minimist": "^1.2.2",
     "@types/node": "^18.0.0",

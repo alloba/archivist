@@ -1,6 +1,6 @@
 /**
- * The entrypoint of the program exists to figure out which source and destinations are desired,
- * and initialize both.
+ * The entrypoint of the program exists to figure out which source and destination(s) are desired,
+ * and initialize them. One or more destinations can be given (see DestinationArgs.ts).
  * The same commands are run regardless of source and destination, relying on method signatures defined
  * via shared interface.
  *

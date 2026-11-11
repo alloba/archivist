@@ -35,9 +35,9 @@ export class ChanSource implements SourceInterface {
         console.log(
             `
 Required parameters for 4ChanSource: 
-    destination.path   - The board to use. wsg/gif/etc.
-    destination.search - The search term to use while looking for threads. 
-                         The term only has to exist within the thread title, it does not have to be a full match. 
+    source.path   - The board to use. wsg/gif/etc.
+    source.search - The search term to use while looking for threads. 
+                    The term only has to exist within the thread title, it does not have to be a full match. 
             `
         )
     }
