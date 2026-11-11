@@ -7,6 +7,7 @@
   "scripts": {
     "test": "tsc && node --test \"build/**/*.test.js\"",
     "build": "npx tsc",
+    "seed-s3-manifest": "tsc && node build/tools/seedS3Manifest.js",
     "prestart": "npx tsc",
     "start": "node ./build/index.js"
   },

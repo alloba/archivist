@@ -1,12 +1,16 @@
 import FileMeta from "../model/FileMeta.js";
-import {ListObjectsV2Output, S3} from "@aws-sdk/client-s3";
+import {S3} from "@aws-sdk/client-s3";
 import {SourceInterface} from "./SourceInterface.js";
 import {Readable} from "stream";
+import path from "path";
+import {HashIndex, indexOptionsFromArgs, MANIFEST_FILENAME} from "../hashindex/HashIndex.js";
+import S3Backing from "../hashindex/S3Backing.js";
 
 export default class S3Source implements SourceInterface {
     bucketname: string
     basepath: string
     s3: S3
+    private index: HashIndex
 
     constructor(sourceargs: any) {
         if (!sourceargs) {
@@ -29,6 +33,11 @@ export default class S3Source implements SourceInterface {
         this.bucketname = sourceargs.bucket
         this.basepath = sourceargs.path.endsWith('/') ? sourceargs.path : sourceargs.path + '/'
         this.s3 = new S3({region: sourceargs.region})
+        // The manifest is saved under the source path as a cache, but a source may be read-only, so failing to
+        // write it only produces a warning.
+        this.index = new HashIndex(
+            new S3Backing(() => this.s3, this.bucketname, this.basepath),
+            indexOptionsFromArgs(sourceargs, true))
 
         console.log('S3 Source has been initialized.')
         console.log(`Region: ${sourceargs.region}`)
@@ -43,38 +52,22 @@ Required parameters for S3Source:
     source.region - The AWS region that the S3 bucket is located in.
     source.bucket - The name of the S3 bucket
     source.path   - The subfolder within the bucket to target. 
+Optional parameters:
+    source.requireManifest - Abort unless ${MANIFEST_FILENAME} already exists under the path.
+    source.rebuild         - Ignore cached hashes and re-hash (download) every object.
+    source.seedFromEtag    - When there is no cached hash for an object, accept its ETag as the md5 instead of
+                             downloading it. Only for bootstrapping a manifest for objects that were uploaded
+                             in a single part. ETags that are not a plain md5 are never used this way.
             `
         )
     }
 
     public async scanForMetadata(): Promise<FileMeta[]> {
-        let imageMetas: FileMeta[] = [];
-        let continuationToken = undefined
-        while (true) {
-            const datachunk: ListObjectsV2Output = await this.s3.listObjectsV2({
-                Delimiter: "",
-                Bucket: this.bucketname,
-                Prefix: this.basepath,
-                ContinuationToken: continuationToken
-            });
-            datachunk.Contents?.filter(x => x !== undefined)
-                .map(x => {
-                    if (x.Key == undefined) {
-                        throw Error('Key undefined for S3 object, which should never be impossible. Aborting.')
-                    }
-                    const filename = x.Key.split("/").pop() as string
-                    const extension = '.' + filename.split(".").pop() as string
-                    const md5 = (x.ETag as string).replaceAll('"', '')
-                    return new FileMeta(filename, x.Key as string, extension, md5)
-                })
-                .forEach(x => imageMetas.push(x))
-
-            if (!datachunk.IsTruncated) {
-                break
-            }
-            continuationToken = datachunk.NextContinuationToken;
-        }
-        return imageMetas
+        await this.index.sync()
+        return this.index.entries().map(x => {
+            const filename = x.name.split("/").pop() as string
+            return new FileMeta(filename, this.basepath + x.name, path.extname(filename), x.md5)
+        })
     }
 
     public async downloadFile(filemeta: FileMeta): Promise<Buffer> {

@@ -6,7 +6,10 @@ import path from 'path'
 import FileSystemDestination from './FileSystemDestination.js'
 import FileUtils from '../FileUtils.js'
 import FileMeta from '../model/FileMeta.js'
-import {MANIFEST_FILENAME, readManifest, TEMP_SUFFIX} from './FileManifest.js'
+import {MANIFEST_FILENAME, TEMP_SUFFIX} from '../hashindex/HashIndex.js'
+import FileSystemBacking from '../hashindex/FileSystemBacking.js'
+
+const readManifest = (dir: string) => new FileSystemBacking(dir).readManifest()
 
 mock.method(console, 'log', () => undefined)
 mock.method(console, 'error', () => undefined)

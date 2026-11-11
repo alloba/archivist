@@ -53,9 +53,44 @@ Exceptions include:
 | `serious`  | This flag is required to exist before files actually download and save. Leaving this off will still query the source/destination for metadata, but no new items will be placed. |
 | `ultradry` | This flag will prevent any outgoing requests, including querying for metadata. This is disabled by default, and is really only for troubleshooting.                             |
 
+### Hash manifests
+
+Everything that holds files (the FileSystem and S3 sources and destinations) de-dupes through the same mechanism:
+a manifest, `.archivist-manifest.json`, stored in the folder (or under the S3 prefix) itself, which caches the md5 of
+each file. S3 metadata (ETags) is not used as the source of truth.
+
+On each run the location is listed (names, sizes and modification times only), and only files that are new or whose
+size/mtime differ from the manifest are hashed, by reading them. The manifest is saved if anything changed.
+It is purely a cache: it can be deleted at any time and will be rebuilt by the next scan (hashing everything once).
+
+These optional flags work on every FileSystem and S3 source or destination (`source.*` or `destination.*`):
+
+| Param             | Description                                                                                                                                                                                                                                        |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `requireManifest` | Abort unless a manifest already exists. Use this for network shares (an unmounted share looks like an empty folder) and for S3 (so a missing manifest fails the run instead of downloading every object to hash it).                               |
+| `rebuild`         | Ignore the cached hashes and re-hash everything. Useful as an occasional audit.                                                                                                                                                                    |
+| `seedFromEtag`    | S3 only. For objects with no cached hash, accept the ETag as the md5 instead of downloading the object. This is for bootstrapping a manifest once. It only applies to ETags that look like a plain md5 (not multipart or KMS uploads), which are downloaded and hashed as normal. |
+
+Sources save their manifest too, but a source may be read-only, so failing to save it is only a warning.
+The 4Chan source gets hashes from the 4Chan api and has no manifest.
+
+**Bootstrapping a manifest for an existing S3 prefix** (so the first run does not download every object).
+Any run that scans the prefix saves the manifest, including a dry run (no `--serious`):
+`npm run start -- --source.type s3 --source.region us-east-1 --source.bucket kaleidoscope-media --source.path wsg --source.seedFromEtag --destination.type fs --destination.path ./scratch`
+
+**Bootstrapping from a folder that mirrors the prefix** (instead of `seedFromEtag`). If a local or NAS folder that
+already has a manifest holds a copy of the prefix, its hashes can be reused. This does not blindly copy the manifest:
+each object is matched by name and size, and its ETag (when it is a plain md5) must agree with the folder's hash, so it
+doubles as an integrity check of the folder against the bucket. Disagreeing objects are reported and left out. Objects
+without a plain md5 ETag need a matching modification time instead. It is a dry run unless `--write` is given, and
+refuses to replace an existing S3 manifest without `--overwrite`:  
+`npm run seed-s3-manifest -- --region us-east-1 --bucket kaleidoscope-media --path wsg --from //guff-nas/video/kaleidoscope-media/wsg --write`
+
+If you sync a prefix down with `aws s3 sync`, add `--exclude ".archivist-manifest.json"` so the S3 manifest does not overwrite the local one.
+
 ### Sources
 
-#### 4Chan 
+#### 4Chan  
 
 The OG. Specifying 4Chan as a source will cause this program to reach out to the site when looking for media files. 
 This source relies on basic interaction with the api that is provided by the site to pull individual threads and 
@@ -74,9 +109,8 @@ So total operations for this source can take a few minutes depending on content.
 
 #### FileSystem
 
-Local file directory as a source. 
-File system sources and destinations incur a bit of extra processing due to the need to scan the file when calculating 
-md5 hash.
+Local file directory as a source.
+Hashes are cached in a manifest in the folder (see "Hash manifests").
 
 **Configuration**
 
@@ -84,11 +118,14 @@ md5 hash.
 |-------------|---------------------------------------------------------------------------------------|---------------------|
 | source.path | Path to the source folder. The folder must already exist, and may be a relative path. | `../source_folder/` |
 
+Optional: `source.requireManifest`, `source.rebuild` (see "Hash manifests").
+
 #### S3 Source
 
 An S3 bucket as a backing source. 
 S3 locations assume a properly prepared environment in context of AWS credentials. 
-This means that credentials must either be set in a config file, or environment variables must be set properly. 
+This means that credentials must either be set in a config file, or environment variables must be set properly.
+Hashes are cached in a manifest object under the path (see "Hash manifests").
 
 **Configuration**
 
@@ -98,6 +135,8 @@ This means that credentials must either be set in a config file, or environment 
 | source.bucket | S3 bucket to target.                                                              | `kaleidoscope-media` |
 | source.path   | Subdirectory to store files in (yeah yeah yeah 'is a key not a directory' shush). | `output_folder/`     |
 
+Optional: `source.requireManifest`, `source.rebuild`, `source.seedFromEtag` (see "Hash manifests").
+
 
 ### Destinations
 
@@ -105,11 +144,8 @@ This means that credentials must either be set in a config file, or environment 
 
 Local storage (including a mounted network share) as a destination.
 
-To avoid re-reading every file on every run, hashes are cached in a manifest, `.archivist-manifest.json`, stored in the
-destination folder itself. On each run the folder is listed, and only files that are new, or whose size or modification
-time differ from the manifest, are hashed. The manifest is a cache: it can be deleted at any time and will be rebuilt
-(by hashing everything once). It is written atomically, and ignored by scans along with subfolders.
-Files that were not saved by this tool are picked up and hashed on the next run.
+Hashes are cached in a manifest in the folder (see "Hash manifests"). It is written atomically, and scans ignore it
+along with subfolders. Files that were not saved by this tool are picked up and hashed on the next run.
 
 **Configuration**
 
@@ -142,3 +178,7 @@ This means that credentials must either be set in a config file, or environment 
 | destination.region | AWS Region that the target S3 bucket is located in.                               | `us-east-1`          |
 | destination.bucket | S3 bucket to target.                                                              | `kaleidoscope-media` |
 | destination.path   | Subdirectory to store files in (yeah yeah yeah 'is a key not a directory' shush). | `output_folder/`     |
+
+Hashes are cached in a manifest object under the path, `<path>/.archivist-manifest.json`, which is saved without the
+public ACL that the media gets. Optional: `destination.requireManifest`, `destination.rebuild`,
+`destination.seedFromEtag` (see "Hash manifests").

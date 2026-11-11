@@ -1,13 +1,16 @@
+import path from "path";
 import FileMeta from "../model/FileMeta.js";
-import {ListObjectsV2CommandOutput, S3} from "@aws-sdk/client-s3";
+import {S3} from "@aws-sdk/client-s3";
 import FileUtils from "../FileUtils.js";
 import {DestinationInterface} from "./DestinationInterface.js";
+import {HashIndex, indexOptionsFromArgs, MANIFEST_FILENAME} from "../hashindex/HashIndex.js";
+import S3Backing from "../hashindex/S3Backing.js";
 
 export default class S3Destination implements DestinationInterface {
     basepath: string
-    existingHashes: Set<string> | null
     bucket: string
     s3: S3
+    private index: HashIndex
 
     constructor(destinationargs: any) {
         if (!destinationargs) {
@@ -29,8 +32,8 @@ export default class S3Destination implements DestinationInterface {
 
         this.basepath = destinationargs.path.endsWith('/') ? destinationargs.path : destinationargs.path + '/'
         this.bucket = destinationargs.bucket
-        this.existingHashes = null
         this.s3 = new S3({region: destinationargs.region})
+        this.index = new HashIndex(new S3Backing(() => this.s3, this.bucket, this.basepath), indexOptionsFromArgs(destinationargs))
 
         console.log('S3 Destination has been initialized.')
         console.log(`Region: ${destinationargs.region}`)
@@ -41,69 +44,61 @@ export default class S3Destination implements DestinationInterface {
     public printHelp(): void {
         console.log(
             `
-Required parameters for S3Destination: 
+Required parameters for S3Destination:
     destination.region - The AWS region that the S3 bucket is located in.
     destination.bucket - The name of the S3 bucket
-    destination.path   - The subfolder within the bucket to target. 
+    destination.path   - The subfolder within the bucket to target.
                          This folder does not have to already exist in the bucket.
+Optional parameters:
+    destination.requireManifest - Abort unless ${MANIFEST_FILENAME} already exists under the path.
+    destination.rebuild         - Ignore cached hashes and re-hash (download) every object.
+    destination.seedFromEtag    - When there is no cached hash for an object, accept its ETag as the md5 instead of
+                                  downloading it. Only for bootstrapping a manifest for objects that were uploaded
+                                  in a single part. ETags that are not a plain md5 are never used this way.
             `
         )
     }
 
     public async saveMedia(filemeta: FileMeta, rawfilepromise: Promise<Buffer>): Promise<void> {
-        if (await this.doesFileAlreadyExist(filemeta)) {
+        await this.index.ensureLoaded()
+        if (this.index.hasHash(filemeta.md5)) {
             console.log('File already exists in destination bucket. Skipping. :: ' + filemeta.name)
-            return Promise.resolve()
+            return
         }
 
         const filename = FileUtils.getUniqueName(filemeta.name)
+        if (this.index.hasName(filename)) {
+            throw Error('Generated filename collides with an existing object. Refusing to overwrite. :: ' + filename)
+        }
         const filecontents = await rawfilepromise
+        const key = this.basepath + filename
 
         await this.s3.putObject({
             Bucket: this.bucket,
-            Key: this.basepath + filename,
+            Key: key,
             Body: filecontents,
             ContentType: this.determineContentType(filemeta),
             ACL: 'public-read'
         })
-        this.existingHashes?.add(filemeta.md5) // so duplicates within a single run are skipped
-        return Promise.resolve()
+
+        // The modification time is what lets the next run trust this entry without re-reading the object.
+        const head = await this.s3.headObject({Bucket: this.bucket, Key: key})
+        if (!head.LastModified) {
+            throw Error('S3 returned no LastModified for an object that was just uploaded. :: ' + key)
+        }
+        this.index.record(
+            {name: filename, md5: FileUtils.getMd5(filecontents), size: filecontents.length, mtimeMs: head.LastModified.getTime()},
+            filemeta.md5)
     }
 
     public async getExistingMeta(): Promise<FileMeta[]> {
-        let imageMetas: FileMeta[] = [];
-        let continuationToken = undefined
-        while (true) {
-            const datachunk: ListObjectsV2CommandOutput = await this.s3.listObjectsV2({
-                Delimiter: "",
-                Bucket: this.bucket,
-                Prefix: this.basepath,
-                ContinuationToken: continuationToken
-            });
-            datachunk.Contents?.filter(x => x !== undefined)
-                .map(x => {
-                    if (x.Key == undefined) {
-                        throw Error('Key undefined for S3 object, which should never be impossible. Aborting.')
-                    }
-                    const filename = x.Key.split("/").pop() as string
-                    const extension = '.' + filename.split(".").pop() as string
-                    const md5 = (x.ETag as string).replaceAll('"', '')
-                    return new FileMeta(filename, x.Key as string, extension, md5)
-                })
-                .forEach(x => imageMetas.push(x))
-
-            if (!datachunk.IsTruncated) {
-                break
-            }
-            continuationToken = datachunk.NextContinuationToken;
-        }
-        return imageMetas
+        await this.index.sync()
+        return this.index.entries().map(x => new FileMeta(x.name, this.basepath + x.name, path.extname(x.name), x.md5))
     }
 
-    public async doesFileAlreadyExist(filemeta: FileMeta): Promise<boolean> {
-        const hashes = this.existingHashes ?? new Set((await this.getExistingMeta()).map(z => z.md5))
-        this.existingHashes = hashes
-        return hashes.has(filemeta.md5)
+    /** Persists any changes to the manifest. Should be called once at the end of a run. */
+    public async close(): Promise<void> {
+        await this.index.flush()
     }
 
     private determineContentType(filemeta: FileMeta): string {

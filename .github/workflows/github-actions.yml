@@ -20,9 +20,10 @@ jobs:
         run: npm ci
       # Each run saves to both S3 and the NAS. The NAS folder is bind-mounted into the job container by the
       # gitea runner config (see README, "Saving to a NAS from CI"). requireManifest makes the run fail
-      # instead of writing into the container's own disk if the mount is missing.
+      # instead of writing into the container's own disk if the mount is missing, and on the S3 side
+      # instead of downloading every object to hash it if the manifest is missing.
       - name: Media download
         run: |
-          npm run start -- --source.type 4chan --source.path wsg --source.search ygyl    --destination.0.type s3 --destination.0.region us-east-1 --destination.0.bucket kaleidoscope-media --destination.0.path wsg     --destination.1.type fs --destination.1.path /archive/kaleidoscope-media/wsg     --destination.1.requireManifest --serious
-          npm run start -- --source.type 4chan --source.path wsg --source.search gondola --destination.0.type s3 --destination.0.region us-east-1 --destination.0.bucket kaleidoscope-media --destination.0.path gondola --destination.1.type fs --destination.1.path /archive/kaleidoscope-media/gondola --destination.1.requireManifest --serious
-          npm run start -- --source.type 4chan --source.path wsg --source.search comfy   --destination.0.type s3 --destination.0.region us-east-1 --destination.0.bucket kaleidoscope-media --destination.0.path comfy   --destination.1.type fs --destination.1.path /archive/kaleidoscope-media/comfy   --destination.1.requireManifest --serious
+          npm run start -- --source.type 4chan --source.path wsg --source.search ygyl    --destination.0.type s3 --destination.0.region us-east-1 --destination.0.bucket kaleidoscope-media --destination.0.path wsg --destination.0.requireManifest      --destination.1.type fs --destination.1.path /archive/kaleidoscope-media/wsg     --destination.1.requireManifest --serious
+          npm run start -- --source.type 4chan --source.path wsg --source.search gondola --destination.0.type s3 --destination.0.region us-east-1 --destination.0.bucket kaleidoscope-media --destination.0.path gondola --destination.0.requireManifest  --destination.1.type fs --destination.1.path /archive/kaleidoscope-media/gondola --destination.1.requireManifest --serious
+          npm run start -- --source.type 4chan --source.path wsg --source.search comfy   --destination.0.type s3 --destination.0.region us-east-1 --destination.0.bucket kaleidoscope-media --destination.0.path comfy --destination.0.requireManifest    --destination.1.type fs --destination.1.path /archive/kaleidoscope-media/comfy   --destination.1.requireManifest --serious
