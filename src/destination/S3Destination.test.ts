@@ -4,7 +4,7 @@ import crypto from 'crypto'
 import S3Destination from './S3Destination.js'
 import FakeS3 from '../testing/FakeS3.js'
 import FileMeta from '../model/FileMeta.js'
-import {MANIFEST_FILENAME, parseManifest} from '../hashindex/HashIndex.js'
+import {INDEX_FILENAME, MANIFEST_FILENAME, parseManifest} from '../hashindex/HashIndex.js'
 
 mock.method(console, 'log', () => undefined)
 
@@ -135,6 +135,17 @@ describe('S3Destination', () => {
             assert.equal(s3.callsTo('getObject').filter(x => x.key !== manifestKey).length, 0)
         })
 
+        it('publishes an index of every object on close, including ones uploaded this run', async () => {
+            const {dest, s3} = make()
+            s3.seed('wsg/old.webm', 'old')
+            await dest.getExistingMeta()
+            await dest.saveMedia(meta('new.webm', 'new'), Promise.resolve(Buffer.from('new')), 'new_1.webm')
+            await dest.close()
+
+            const published = JSON.parse(s3.objects.get('wsg/' + INDEX_FILENAME)!.body.toString())
+            assert.deepEqual(published, {version: 1, files: ['new_1.webm', 'old.webm']})
+        })
+
         it('refuses to overwrite an object when the generated name collides', async () => {
             const {dest, s3} = make()
             await dest.getExistingMeta()
@@ -158,7 +169,7 @@ describe('S3Destination', () => {
         it('refuses unsafe requested filenames', async () => {
             const {dest} = make()
             await dest.getExistingMeta()
-            for (const bad of ['../x.webm', 'sub/x.webm', MANIFEST_FILENAME]) {
+            for (const bad of ['../x.webm', 'sub/x.webm', MANIFEST_FILENAME, INDEX_FILENAME]) {
                 await assert.rejects(
                     dest.saveMedia(meta('new.webm', 'new'), Promise.resolve(Buffer.from('new')), bad),
                     /unsafe filename/)

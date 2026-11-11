@@ -3,7 +3,7 @@ import fs from 'fs'
 import FileMeta from "../model/FileMeta.js";
 import FileUtils from "../FileUtils.js";
 import {DestinationInterface} from "./DestinationInterface.js";
-import {HashIndex, indexOptionsFromArgs, MANIFEST_FILENAME, TEMP_SUFFIX} from "../hashindex/HashIndex.js";
+import {HashIndex, INDEX_FILENAME, indexOptionsFromArgs, MANIFEST_FILENAME, TEMP_SUFFIX} from "../hashindex/HashIndex.js";
 import FileSystemBacking from "../hashindex/FileSystemBacking.js";
 
 export default class FileSystemDestination implements DestinationInterface {
@@ -20,7 +20,7 @@ export default class FileSystemDestination implements DestinationInterface {
             throw Error('Missing required argument for destination initialization :: ' + 'destination.path')
         }
         this.basepath = path.resolve(process.cwd(), destinationargs.path)
-        this.index = new HashIndex(new FileSystemBacking(this.basepath), indexOptionsFromArgs(destinationargs))
+        this.index = new HashIndex(new FileSystemBacking(this.basepath), indexOptionsFromArgs(destinationargs, false, true))
 
         console.log('File System destination has been initialized.')
         console.log(`Folder Path: ${this.basepath}\n`)
@@ -36,6 +36,8 @@ Optional parameters:
     destination.requireManifest - Abort unless ${MANIFEST_FILENAME} already exists in the folder.
                                   Guards against writing into an empty, unmounted network share.
     destination.rebuild         - Ignore cached hashes and re-hash every file in the folder.
+    destination.publishIndex    - Default true. Set to false to skip writing the names-only listing,
+                                  ${INDEX_FILENAME}, in the folder.
             `
         )
     }
@@ -48,7 +50,7 @@ Optional parameters:
 
         const raw = await rawfilepromise
         const filename = requestedName ?? FileUtils.getUniqueName(filemeta.name)
-        if (path.basename(filename) !== filename || filename === MANIFEST_FILENAME || filename.endsWith(TEMP_SUFFIX)) {
+        if (path.basename(filename) !== filename || filename === MANIFEST_FILENAME || filename === INDEX_FILENAME || filename.endsWith(TEMP_SUFFIX)) {
             throw Error('Refusing to save under an unsafe filename. :: ' + filename)
         }
         if (this.index.hasName(filename)) {

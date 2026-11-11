@@ -3,10 +3,12 @@ import {Readable} from 'stream'
 import {S3} from '@aws-sdk/client-s3'
 import {
     IndexBacking,
+    INDEX_FILENAME,
     ListedItem,
     MANIFEST_FILENAME,
     ManifestEntry,
     parseManifest,
+    serializeIndex,
     serializeManifest
 } from './HashIndex.js'
 
@@ -19,10 +21,12 @@ import {
  */
 export default class S3Backing implements IndexBacking {
     private manifestKey: string
+    private indexKey: string
 
     /** `getClient` is a function so owners can swap their client (e.g. for tests) after construction. */
     constructor(private getClient: () => S3, public bucket: string, public prefix: string) {
         this.manifestKey = prefix + MANIFEST_FILENAME
+        this.indexKey = prefix + INDEX_FILENAME
     }
 
     describe(): string {
@@ -60,6 +64,20 @@ export default class S3Backing implements IndexBacking {
         })
     }
 
+    /**
+     * No ACL here either (the bucket policy decides who can read). `no-cache` makes browsers revalidate on every load
+     * (cheap, via the ETag) instead of serving a stale list for hours.
+     */
+    async writeIndex(names: string[]): Promise<void> {
+        await this.getClient().putObject({
+            Bucket: this.bucket,
+            Key: this.indexKey,
+            Body: serializeIndex(names),
+            ContentType: 'application/json',
+            CacheControl: 'no-cache',
+        })
+    }
+
     async list(): Promise<ListedItem[]> {
         const items: ListedItem[] = []
         let continuationToken: string | undefined = undefined
@@ -74,8 +92,8 @@ export default class S3Backing implements IndexBacking {
                 if (object.Key == undefined) {
                     throw Error('Key undefined for S3 object, which should never be impossible. Aborting.')
                 }
-                if (object.Key === this.manifestKey || object.Key.endsWith('/')) {
-                    continue // the manifest itself, and console-created "folder" placeholders
+                if (object.Key === this.manifestKey || object.Key === this.indexKey || object.Key.endsWith('/')) {
+                    continue // the manifest and index, and console-created "folder" placeholders
                 }
                 if (object.LastModified == undefined) {
                     throw Error('S3 listing returned no LastModified for object. Aborting. :: ' + object.Key)

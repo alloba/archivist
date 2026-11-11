@@ -13,6 +13,13 @@
  */
 export const MANIFEST_FILENAME = '.archivist-manifest.json'
 
+/**
+ * A public-facing listing of the location, `.archivist-index.json`, stored beside the manifest. Unlike the manifest
+ * (a private cache of hashes that only archivist reads), this is meant for other consumers, e.g. a web page that wants
+ * the list of files without paging through an S3 listing. It holds file names only, relative to the location.
+ */
+export const INDEX_FILENAME = '.archivist-index.json'
+
 /** Suffix for files that are still being written. Scans ignore these. */
 export const TEMP_SUFFIX = '.archivist-tmp'
 
@@ -48,7 +55,10 @@ export interface IndexBacking {
     /** Must not leave a half-written manifest behind if interrupted. */
     writeManifest(entries: ManifestEntry[]): Promise<void>
 
-    /** Lists files (not the manifest itself, temp files, or folders). */
+    /** Publishes the index (file names only). Must not leave a half-written file behind if interrupted. */
+    writeIndex(names: string[]): Promise<void>
+
+    /** Lists files (not the manifest, the index, temp files, or folders). */
     list(): Promise<ListedItem[]>
 
     /** Reads the file and returns its md5. */
@@ -62,6 +72,8 @@ export interface IndexOptions {
     rebuild?: boolean
     /** Accept `hintMd5` from the backing for files that have no valid cached entry, instead of reading them. */
     useHints?: boolean
+    /** Also publish `.archivist-index.json`, a names-only listing for other consumers. Destinations default to on. */
+    publishIndex?: boolean
     /** Warn, rather than fail, if the manifest cannot be written. For read-only locations (sources). */
     bestEffortWrite?: boolean
 }
@@ -70,6 +82,7 @@ export class HashIndex {
     private entriesByName: Map<string, ManifestEntry> | null = null
     private hashes: Set<string> | null = null
     private dirty = false
+    private indexDirty = true
 
     constructor(private backing: IndexBacking, private options: IndexOptions = {}) {
     }
@@ -112,6 +125,7 @@ export class HashIndex {
             this.hashes!.add(alsoKnownAs)
         }
         this.dirty = true
+        this.indexDirty = true
     }
 
     /** Reconciles the manifest with what is actually in the location, and persists it if anything changed. */
@@ -165,23 +179,44 @@ export class HashIndex {
         this.entriesByName = fresh
         this.hashes = new Set([...fresh.values()].map(x => x.md5))
         this.dirty = this.dirty || changed
-        await this.flush()
+        if (changed) {
+            this.indexDirty = true // files were added or removed by someone else
+        }
+        await this.flushManifest()
     }
 
-    /** Persists the manifest if it has changes. Safe to call repeatedly. */
+    /**
+     * Persists the manifest if it has changes, then publishes the index (if enabled and out of date).
+     * Safe to call repeatedly. Call once at the end of a run, so the index reflects everything saved.
+     */
     public async flush(): Promise<void> {
+        await this.flushManifest()
+        if (!this.entriesByName || !this.options.publishIndex || !this.indexDirty) {
+            return
+        }
+        const names = [...this.entriesByName.keys()].sort()
+        await this.writeOrWarn('index', () => this.backing.writeIndex(names))
+        this.indexDirty = false
+    }
+
+    private async flushManifest(): Promise<void> {
         if (!this.dirty || !this.entriesByName) {
             return
         }
+        const entries = [...this.entriesByName.values()]
+        await this.writeOrWarn('manifest', () => this.backing.writeManifest(entries))
+        this.dirty = false
+    }
+
+    private async writeOrWarn(what: string, write: () => Promise<void>): Promise<void> {
         try {
-            await this.backing.writeManifest([...this.entriesByName.values()])
+            await write()
         } catch (e) {
             if (!this.options.bestEffortWrite) {
                 throw e
             }
-            console.warn(`Could not save manifest (continuing without it). :: ${this.backing.describe()} :: ${e}`)
+            console.warn(`Could not save ${what} (continuing without it). :: ${this.backing.describe()} :: ${e}`)
         }
-        this.dirty = false
     }
 
     private loaded(): Map<string, ManifestEntry> {
@@ -214,16 +249,21 @@ export function serializeManifest(entries: ManifestEntry[]): string {
     return JSON.stringify({version: 1, files: entries})
 }
 
+export function serializeIndex(names: string[]): string {
+    return JSON.stringify({version: 1, files: names})
+}
+
 export function isFlagSet(value: unknown): boolean {
     return value === true || value === 'true'
 }
 
 /** Reads the manifest-related runtime args that every source/destination accepts. */
-export function indexOptionsFromArgs(args: any, bestEffortWrite = false): IndexOptions {
+export function indexOptionsFromArgs(args: any, bestEffortWrite = false, publishIndexByDefault = false): IndexOptions {
     return {
         requireManifest: isFlagSet(args?.requireManifest),
         rebuild: isFlagSet(args?.rebuild),
         useHints: isFlagSet(args?.seedFromEtag),
+        publishIndex: args?.publishIndex === undefined ? publishIndexByDefault : isFlagSet(args.publishIndex),
         bestEffortWrite,
     }
 }

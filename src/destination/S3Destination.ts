@@ -3,7 +3,7 @@ import FileMeta from "../model/FileMeta.js";
 import {S3} from "@aws-sdk/client-s3";
 import FileUtils from "../FileUtils.js";
 import {DestinationInterface} from "./DestinationInterface.js";
-import {HashIndex, indexOptionsFromArgs, MANIFEST_FILENAME} from "../hashindex/HashIndex.js";
+import {HashIndex, INDEX_FILENAME, indexOptionsFromArgs, MANIFEST_FILENAME} from "../hashindex/HashIndex.js";
 import S3Backing from "../hashindex/S3Backing.js";
 
 export default class S3Destination implements DestinationInterface {
@@ -33,7 +33,7 @@ export default class S3Destination implements DestinationInterface {
         this.basepath = destinationargs.path.endsWith('/') ? destinationargs.path : destinationargs.path + '/'
         this.bucket = destinationargs.bucket
         this.s3 = new S3({region: destinationargs.region})
-        this.index = new HashIndex(new S3Backing(() => this.s3, this.bucket, this.basepath), indexOptionsFromArgs(destinationargs))
+        this.index = new HashIndex(new S3Backing(() => this.s3, this.bucket, this.basepath), indexOptionsFromArgs(destinationargs, false, true))
 
         console.log('S3 Destination has been initialized.')
         console.log(`Region: ${destinationargs.region}`)
@@ -55,6 +55,8 @@ Optional parameters:
     destination.seedFromEtag    - When there is no cached hash for an object, accept its ETag as the md5 instead of
                                   downloading it. Only for bootstrapping a manifest for objects that were uploaded
                                   in a single part. ETags that are not a plain md5 are never used this way.
+    destination.publishIndex    - Default true. Set to false to skip writing the public names-only listing,
+                                  ${INDEX_FILENAME}, under the path.
             `
         )
     }
@@ -67,7 +69,7 @@ Optional parameters:
         }
 
         const filename = requestedName ?? FileUtils.getUniqueName(filemeta.name)
-        if (filename.includes('/') || filename === MANIFEST_FILENAME) {
+        if (filename.includes('/') || filename === MANIFEST_FILENAME || filename === INDEX_FILENAME) {
             throw Error('Refusing to save under an unsafe filename. :: ' + filename)
         }
         if (this.index.hasName(filename)) {

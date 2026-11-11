@@ -72,6 +72,17 @@ These optional flags work on every FileSystem and S3 source or destination (`sou
 | `rebuild`         | Ignore the cached hashes and re-hash everything. Useful as an occasional audit.                                                                                                                                                                    |
 | `seedFromEtag`    | S3 only. For objects with no cached hash, accept the ETag as the md5 instead of downloading the object. This is for bootstrapping a manifest once. It only applies to ETags that look like a plain md5 (not multipart or KMS uploads), which are downloaded and hashed as normal. |
 
+### Published index
+
+Every destination also publishes `.archivist-index.json` beside the manifest: `{"version":1,"files":["a_1.webm", ...]}`,
+the sorted names of every file in the location (relative to it, without the manifest or the index itself). Unlike the
+manifest, which is a private cache of hashes, this is meant for other consumers. For example, the kaleidoscope web page
+reads it to get the media list in a few small requests instead of paging through a 27k-object S3 listing.
+
+It is rewritten at the end of every run (so locations that predate it get one on their next run), and is never treated as
+media by scans. On S3 it is uploaded with `Cache-Control: no-cache` and no ACL (the bucket policy decides who can read it).
+Pass `--destination.publishIndex false` to turn it off. Sources never write one.
+
 Sources save their manifest too, but a source may be read-only, so failing to save it is only a warning.
 The 4Chan source gets hashes from the 4Chan api and has no manifest.
 

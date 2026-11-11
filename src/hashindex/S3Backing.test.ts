@@ -3,13 +3,29 @@ import assert from 'node:assert/strict'
 import crypto from 'crypto'
 import S3Backing from './S3Backing.js'
 import FakeS3 from '../testing/FakeS3.js'
-import {MANIFEST_FILENAME} from './HashIndex.js'
+import {INDEX_FILENAME, MANIFEST_FILENAME} from './HashIndex.js'
 
 mock.method(console, 'log', () => undefined)
 
 const md5 = (s: string) => crypto.createHash('md5').update(s).digest('hex')
 
 const make = (s3 = new FakeS3()) => ({s3, backing: new S3Backing(() => s3 as any, 'bucket', 'wsg/')})
+
+describe('S3Backing published index', () => {
+    it('writes names as JSON with no ACL and no-cache, and does not list it as media', async () => {
+        const {s3, backing} = make()
+        s3.seed('wsg/a.webm', 'aaa')
+
+        await backing.writeIndex(['a.webm'])
+
+        const put = s3.callsTo('putObject')[0]
+        assert.equal(put.key, 'wsg/' + INDEX_FILENAME)
+        assert.equal(put.args.ACL, undefined)
+        assert.equal(put.args.CacheControl, 'no-cache')
+        assert.deepEqual(JSON.parse(s3.objects.get(put.key!)!.body.toString()), {version: 1, files: ['a.webm']})
+        assert.deepEqual((await backing.list()).map(x => x.name), ['a.webm'])
+    })
+})
 
 describe('S3Backing', () => {
     describe('list', () => {

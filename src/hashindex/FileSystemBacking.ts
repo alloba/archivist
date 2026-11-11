@@ -3,10 +3,12 @@ import path from 'path'
 import FileUtils from '../FileUtils.js'
 import {
     IndexBacking,
+    INDEX_FILENAME,
     ListedItem,
     MANIFEST_FILENAME,
     ManifestEntry,
     parseManifest,
+    serializeIndex,
     serializeManifest,
     TEMP_SUFFIX
 } from './HashIndex.js'
@@ -49,10 +51,17 @@ export default class FileSystemBacking implements IndexBacking {
         await fs.promises.rename(tempPath, manifestPath)
     }
 
+    async writeIndex(names: string[]): Promise<void> {
+        const indexPath = path.join(this.dir, INDEX_FILENAME)
+        const tempPath = indexPath + TEMP_SUFFIX
+        await fs.promises.writeFile(tempPath, serializeIndex(names))
+        await fs.promises.rename(tempPath, indexPath)
+    }
+
     async list(): Promise<ListedItem[]> {
         const items: ListedItem[] = []
         for (const dirent of await fs.promises.readdir(this.dir, {withFileTypes: true})) {
-            if (!dirent.isFile() || dirent.name === MANIFEST_FILENAME || dirent.name.endsWith(TEMP_SUFFIX)) {
+            if (!dirent.isFile() || dirent.name === MANIFEST_FILENAME || dirent.name === INDEX_FILENAME || dirent.name.endsWith(TEMP_SUFFIX)) {
                 continue
             }
             const stat = await fs.promises.stat(path.join(this.dir, dirent.name))

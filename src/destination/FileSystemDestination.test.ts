@@ -6,13 +6,45 @@ import path from 'path'
 import FileSystemDestination from './FileSystemDestination.js'
 import FileUtils from '../FileUtils.js'
 import FileMeta from '../model/FileMeta.js'
-import {MANIFEST_FILENAME, TEMP_SUFFIX} from '../hashindex/HashIndex.js'
+import {INDEX_FILENAME, MANIFEST_FILENAME, TEMP_SUFFIX} from '../hashindex/HashIndex.js'
 import FileSystemBacking from '../hashindex/FileSystemBacking.js'
 
 const readManifest = (dir: string) => new FileSystemBacking(dir).readManifest()
 
 mock.method(console, 'log', () => undefined)
 mock.method(console, 'error', () => undefined)
+
+describe('FileSystemDestination published index', () => {
+    it('writes a names-only index on close, which later scans do not treat as media', async () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archivist-index-'))
+        try {
+            const dest = new FileSystemDestination({path: dir})
+            await dest.getExistingMeta()
+            await dest.saveMedia(new FileMeta('a.webm', 'a.webm', '.webm', 'h'), Promise.resolve(Buffer.from('aaa')), 'a_1.webm')
+            await dest.close()
+
+            const published = JSON.parse(fs.readFileSync(path.join(dir, INDEX_FILENAME), 'utf8'))
+            assert.deepEqual(published, {version: 1, files: ['a_1.webm']})
+            const again = await new FileSystemDestination({path: dir}).getExistingMeta()
+            assert.deepEqual(again.map(x => x.name), ['a_1.webm'])
+        } finally {
+            fs.rmSync(dir, {recursive: true, force: true})
+        }
+    })
+
+    it('can be turned off', async () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archivist-index-'))
+        try {
+            const dest = new FileSystemDestination({path: dir, publishIndex: 'false'})
+            await dest.getExistingMeta()
+            await dest.close()
+
+            assert.equal(fs.existsSync(path.join(dir, INDEX_FILENAME)), false)
+        } finally {
+            fs.rmSync(dir, {recursive: true, force: true})
+        }
+    })
+})
 
 describe('FileSystemDestination', () => {
     let dir: string
@@ -146,7 +178,7 @@ describe('FileSystemDestination', () => {
             await dest.saveMedia(meta('new.webm', 'content'), Promise.resolve(Buffer.from('content')))
             await dest.close()
 
-            const files = fs.readdirSync(dir).filter(x => x !== MANIFEST_FILENAME)
+            const files = fs.readdirSync(dir).filter(x => x !== MANIFEST_FILENAME && x !== INDEX_FILENAME)
             assert.equal(files.length, 1)
             assert.match(files[0], /^new_\d+\.webm$/)
             assert.equal(fs.readFileSync(path.join(dir, files[0]), 'utf8'), 'content')
@@ -165,6 +197,7 @@ describe('FileSystemDestination', () => {
             write('a.webm', 'aaa')
             const dest = newDest()
             await dest.getExistingMeta()
+            await dest.close() // writes the manifest and index, so the snapshot below already has them
             const before = fs.readdirSync(dir).sort()
 
             const neverResolves = new Promise<Buffer>(() => undefined) // the test would hang if this were awaited
@@ -182,7 +215,7 @@ describe('FileSystemDestination', () => {
             await dest.saveMedia(meta('two.webm', 'dup'), Promise.resolve(Buffer.from('dup')))
             await dest.close()
 
-            assert.equal(fs.readdirSync(dir).filter(x => x !== MANIFEST_FILENAME).length, 1)
+            assert.equal(fs.readdirSync(dir).filter(x => x !== MANIFEST_FILENAME && x !== INDEX_FILENAME).length, 1)
         })
 
         it('is picked up by the next run without hashing anything', async () => {
@@ -209,12 +242,12 @@ describe('FileSystemDestination', () => {
 
         it('refuses unsafe requested filenames', async () => {
             const dest = newDest()
-            for (const bad of ['../escape.webm', 'sub/dir.webm', MANIFEST_FILENAME, 'x.webm' + TEMP_SUFFIX]) {
+            for (const bad of ['../escape.webm', 'sub/dir.webm', MANIFEST_FILENAME, INDEX_FILENAME, 'x.webm' + TEMP_SUFFIX]) {
                 await assert.rejects(
                     dest.saveMedia(meta('new.webm', 'content'), Promise.resolve(Buffer.from('content')), bad),
                     /unsafe filename/)
             }
-            assert.deepEqual(fs.readdirSync(dir).filter(x => x !== MANIFEST_FILENAME), [])
+            assert.deepEqual(fs.readdirSync(dir).filter(x => x !== MANIFEST_FILENAME && x !== INDEX_FILENAME), [])
         })
 
         it('refuses to overwrite when the generated name collides', async () => {

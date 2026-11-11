@@ -40,6 +40,15 @@ class FakeBacking implements IndexBacking {
         this.manifest = entries
     }
 
+    index: string[] | null = null
+    indexWrites = 0
+
+    async writeIndex(names: string[]) {
+        if (this.failWrites) throw Error('read-only')
+        this.indexWrites++
+        this.index = names
+    }
+
     async list(): Promise<ListedItem[]> {
         return [...this.files].map(([name, f]) => ({name, size: f.content.length, mtimeMs: f.mtimeMs, hintMd5: f.hintMd5}))
     }
@@ -262,15 +271,89 @@ describe('parseManifest', () => {
     })
 })
 
+describe('HashIndex published index', () => {
+    const make = (backing: FakeBacking, options: IndexOptions = {publishIndex: true}) => new HashIndex(backing, options)
+
+    it('publishes a sorted, names-only listing on flush', async () => {
+        const backing = new FakeBacking()
+        backing.add('b.webm', 'b')
+        backing.add('a.webm', 'a')
+        const index = make(backing)
+
+        await index.sync()
+        assert.equal(backing.indexWrites, 0) // only written at the end of the run
+        await index.flush()
+
+        assert.deepEqual(backing.index, ['a.webm', 'b.webm'])
+    })
+
+    it('is published even when nothing changed, so existing locations get one', async () => {
+        const backing = new FakeBacking()
+        backing.add('a.webm', 'a')
+        backing.manifest = [entry('a.webm', 'a')]
+        const index = make(backing)
+
+        await index.sync()
+        await index.flush()
+
+        assert.equal(backing.writes, 0)
+        assert.deepEqual(backing.index, ['a.webm'])
+    })
+
+    it('includes files recorded during the run, and is not rewritten twice without changes', async () => {
+        const backing = new FakeBacking()
+        const index = make(backing)
+        await index.sync()
+        index.record({name: 'new.webm', md5: 'm', size: 1, mtimeMs: 1})
+
+        await index.flush()
+        await index.flush()
+
+        assert.deepEqual(backing.index, ['new.webm'])
+        assert.equal(backing.indexWrites, 1)
+    })
+
+    it('is not published unless enabled', async () => {
+        const backing = new FakeBacking()
+        backing.add('a.webm', 'a')
+        const index = make(backing, {})
+
+        await index.sync()
+        await index.flush()
+
+        assert.equal(backing.index, null)
+    })
+
+    it('fails the run when it cannot be written, unless best effort', async () => {
+        const failing = new FakeBacking()
+        failing.failWrites = true
+        const strict = make(failing)
+        await assert.rejects(strict.sync(), /read-only/) // the manifest write fails first
+
+        const lenient = make(failing, {publishIndex: true, bestEffortWrite: true})
+        await lenient.sync()
+        await lenient.flush() // warns, does not throw
+    })
+})
+
+describe('indexOptionsFromArgs publishIndex', () => {
+    it('is off by default for sources and on for destinations, and can be overridden', () => {
+        assert.equal(indexOptionsFromArgs({}).publishIndex, false)
+        assert.equal(indexOptionsFromArgs({}, false, true).publishIndex, true)
+        assert.equal(indexOptionsFromArgs({publishIndex: 'false'}, false, true).publishIndex, false)
+        assert.equal(indexOptionsFromArgs({publishIndex: true}).publishIndex, true)
+    })
+})
+
 describe('indexOptionsFromArgs', () => {
     it('reads flags given as booleans or the string "true"', () => {
         assert.deepEqual(indexOptionsFromArgs({requireManifest: true, rebuild: 'true', seedFromEtag: true}),
-            {requireManifest: true, rebuild: true, useHints: true, bestEffortWrite: false})
+            {requireManifest: true, rebuild: true, useHints: true, publishIndex: false, bestEffortWrite: false})
     })
 
     it('defaults everything off', () => {
         assert.deepEqual(indexOptionsFromArgs({}),
-            {requireManifest: false, rebuild: false, useHints: false, bestEffortWrite: false})
+            {requireManifest: false, rebuild: false, useHints: false, publishIndex: false, bestEffortWrite: false})
         assert.equal(indexOptionsFromArgs(undefined, true).bestEffortWrite, true)
     })
 })
